@@ -1,0 +1,659 @@
+###############################################################################
+#                                                                             #
+# IAR ELF Linker V6.30.1.53127/W32 for ARM              24/Apr/2017  13:33:13 #
+# Copyright 2007-2011 IAR Systems AB.                                         #
+#                                                                             #
+#    Output file  =  E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Exe\ #
+#                    DTU4.out                                                 #
+#    Map file     =  E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\List #
+#                    \DTU4.map                                                #
+#    Command line =  E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    GPRS.o E:\SVN\Research\Personal\wangjinlong\SoftWare\Deb #
+#                    ug\Obj\SpiFlash.o E:\SVN\Research\Personal\wangjinlong\S #
+#                    oftWare\Debug\Obj\Usart.o E:\SVN\Research\Personal\wangj #
+#                    inlong\SoftWare\Debug\Obj\led.o                          #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    main.o E:\SVN\Research\Personal\wangjinlong\SoftWare\Deb #
+#                    ug\Obj\misc.o E:\SVN\Research\Personal\wangjinlong\SoftW #
+#                    are\Debug\Obj\os_cpu_a.o E:\SVN\Research\Personal\wangji #
+#                    nlong\SoftWare\Debug\Obj\os_cpu_c.o                      #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    os_dbg.o E:\SVN\Research\Personal\wangjinlong\SoftWare\D #
+#                    ebug\Obj\startup_stm32f10x_md.o                          #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_adc.o E:\SVN\Research\Personal\wangjinlong\Sof #
+#                    tWare\Debug\Obj\stm32f10x_bkp.o                          #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_can.o E:\SVN\Research\Personal\wangjinlong\Sof #
+#                    tWare\Debug\Obj\stm32f10x_crc.o                          #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_dac.o E:\SVN\Research\Personal\wangjinlong\Sof #
+#                    tWare\Debug\Obj\stm32f10x_dbgmcu.o                       #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_dma.o E:\SVN\Research\Personal\wangjinlong\Sof #
+#                    tWare\Debug\Obj\stm32f10x_exti.o                         #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_flash.o E:\SVN\Research\Personal\wangjinlong\S #
+#                    oftWare\Debug\Obj\stm32f10x_fsmc.o                       #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_gpio.o E:\SVN\Research\Personal\wangjinlong\So #
+#                    ftWare\Debug\Obj\stm32f10x_i2c.o                         #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_it.o E:\SVN\Research\Personal\wangjinlong\Soft #
+#                    Ware\Debug\Obj\stm32f10x_iwdg.o                          #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_pwr.o E:\SVN\Research\Personal\wangjinlong\Sof #
+#                    tWare\Debug\Obj\stm32f10x_rcc.o                          #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_rtc.o E:\SVN\Research\Personal\wangjinlong\Sof #
+#                    tWare\Debug\Obj\stm32f10x_sdio.o                         #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_spi.o E:\SVN\Research\Personal\wangjinlong\Sof #
+#                    tWare\Debug\Obj\stm32f10x_tim.o                          #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    stm32f10x_usart.o E:\SVN\Research\Personal\wangjinlong\S #
+#                    oftWare\Debug\Obj\stm32f10x_wwdg.o                       #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\ #
+#                    system_stm32f10x.o E:\SVN\Research\Personal\wangjinlong\ #
+#                    SoftWare\Debug\Obj\ucos_ii.o -o                          #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Exe\ #
+#                    DTU4.out --map E:\SVN\Research\Personal\wangjinlong\Soft #
+#                    Ware\Debug\List\DTU4.map --config                        #
+#                    E:\SVN\Research\Personal\wangjinlong\SoftWare\cpu\STM32_ #
+#                    Flash.icf --semihosting --entry __iar_program_start      #
+#                    --vfe                                                    #
+#                                                                             #
+#                                                                             #
+###############################################################################
+
+*******************************************************************************
+*** RUNTIME MODEL ATTRIBUTES
+***
+
+CppFlavor       = *
+__SystemLibrary = DLib
+
+
+*******************************************************************************
+*** PLACEMENT SUMMARY
+***
+
+"A1":  place at start of [0x08000000-0x0800ffff] { ro section .intvec };
+"P1":  place in [from 0x08000000 to 0x0800ffff] { ro };
+"P2":  place in [from 0x20000000 to 0x200027ff] { rw, block HEAP, block CSTACK };
+
+  Section            Kind        Address    Size  Object
+  -------            ----        -------    ----  ------
+"A1":                                       0xec
+  .intvec            ro code  0x08000000    0xec  startup_stm32f10x_md.o [1]
+                            - 0x080000ec    0xec
+
+"P1":                                     0x3778
+  .text              ro code  0x080000ec  0x1148  ucos_ii.o [1]
+  .text              ro code  0x08001234   0x110  os_cpu_c.o [1]
+  CODE               ro code  0x08001344    0xa0  os_cpu_a.o [1]
+  .text              ro code  0x080013e4   0xe4c  GPRS.o [1]
+  .text              ro code  0x08002230   0x15c  stm32f10x_rcc.o [1]
+  .text              ro code  0x0800238c    0xd8  stm32f10x_gpio.o [1]
+  .text              ro code  0x08002464   0x1f0  stm32f10x_usart.o [1]
+  .text              ro code  0x08002654    0x84  misc.o [1]
+  .text              ro code  0x080026d8    0x7c  led.o [1]
+  .text              ro code  0x08002754   0x3f4  Usart.o [1]
+  .text              ro code  0x08002b48    0x14  GPRS.o [1]
+  .text              ro code  0x08002b5c    0x62  memcmp.o [4]
+  .text              ro code  0x08002bbe     0xe  GPRS.o [1]
+  .text              ro code  0x08002bcc   0x1fc  SpiFlash.o [1]
+  .text              ro code  0x08002dc8    0x66  ABImemset.o [4]
+  .text              ro code  0x08002e2e    0x2e  copy_init3.o [4]
+  .text              ro code  0x08002e5c    0x76  ABImemcpy.o [4]
+  .text              ro code  0x08002ed2    0x22  zero_init3.o [4]
+  .text              ro code  0x08002ef4    0x78  stm32f10x_spi.o [1]
+  .text              ro code  0x08002f6c   0x17c  stm32f10x_flash.o [1]
+  .text              ro code  0x080030e8   0x158  system_stm32f10x.o [1]
+  .text              ro code  0x08003240   0x150  main.o [1]
+  .rodata            const    0x08003390   0x100  ucos_ii.o [1]
+  .text              ro code  0x08003490    0x52  stm32f10x_it.o [1]
+  .rodata            const    0x080034e2     0x2  os_dbg.o [1]
+  .text              ro code  0x080034e4    0x2c  data_init3.o [4]
+  .iar.init_table    const    0x08003510    0x24  - Linker created -
+  .rodata            const    0x08003534    0x18  GPRS.o [1]
+  .rodata            const    0x0800354c    0x18  GPRS.o [1]
+  .rodata            const    0x08003564    0x18  GPRS.o [1]
+  .rodata            const    0x0800357c    0x18  GPRS.o [1]
+  .rodata            const    0x08003594    0x18  GPRS.o [1]
+  .text              ro code  0x080035ac    0x16  cmain.o [4]
+  .text              ro code  0x080035c2     0x4  low_level_init.o [3]
+  .text              ro code  0x080035c6     0x4  exit.o [3]
+  .text              ro code  0x080035cc     0xa  cexit.o [4]
+  .text              ro code  0x080035d8    0x14  exit.o [5]
+  .rodata            const    0x080035ec    0x14  GPRS.o [1]
+  .rodata            const    0x08003600    0x14  GPRS.o [1]
+  .rodata            const    0x08003614    0x14  GPRS.o [1]
+  .rodata            const    0x08003628    0x10  GPRS.o [1]
+  .rodata            const    0x08003638    0x10  GPRS.o [1]
+  .rodata            const    0x08003648    0x10  GPRS.o [1]
+  .rodata            const    0x08003658    0x10  GPRS.o [1]
+  .rodata            const    0x08003668    0x10  GPRS.o [1]
+  .rodata            const    0x08003678    0x10  GPRS.o [1]
+  .rodata            const    0x08003688    0x10  GPRS.o [1]
+  .rodata            const    0x08003698    0x10  GPRS.o [1]
+  .rodata            const    0x080036a8    0x10  GPRS.o [1]
+  .rodata            const    0x080036b8    0x10  GPRS.o [1]
+  .rodata            const    0x080036c8    0x10  GPRS.o [1]
+  .rodata            const    0x080036d8    0x10  GPRS.o [1]
+  .text              ro code  0x080036e8    0x10  startup_stm32f10x_md.o [1]
+  .rodata            const    0x080036f8     0xc  GPRS.o [1]
+  .rodata            const    0x08003704     0xc  GPRS.o [1]
+  .rodata            const    0x08003710     0xc  GPRS.o [1]
+  .rodata            const    0x0800371c     0xc  GPRS.o [1]
+  .rodata            const    0x08003728     0xc  GPRS.o [1]
+  .rodata            const    0x08003734     0xc  GPRS.o [1]
+  .rodata            const    0x08003740     0xc  GPRS.o [1]
+  .rodata            const    0x0800374c     0xc  Usart.o [1]
+  .text              ro code  0x08003758     0xc  cstartup_M.o [4]
+  .rodata            const    0x08003764     0x8  GPRS.o [1]
+  .rodata            const    0x0800376c     0x8  GPRS.o [1]
+  .rodata            const    0x08003774     0x8  GPRS.o [1]
+  .text              ro code  0x0800377c     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003780     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003784     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003788     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x0800378c     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003790     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003794     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003798     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x0800379c     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037a0     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037a4     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037a8     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037ac     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037b0     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037b4     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037b8     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037bc     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037c0     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037c4     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037c8     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037cc     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037d0     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037d4     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037d8     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037dc     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037e0     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037e4     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037e8     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037ec     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037f0     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037f4     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037f8     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x080037fc     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003800     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003804     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003808     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x0800380c     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003810     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003814     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003818     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x0800381c     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003820     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003824     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003828     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x0800382c     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003830     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003834     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003838     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x0800383c     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003840     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003844     0x4  startup_stm32f10x_md.o [1]
+  .text              ro code  0x08003848     0x4  startup_stm32f10x_md.o [1]
+  .rodata            const    0x0800384c     0x0  bwt_init3c.o [4]
+  Initializer bytes  ro data  0x0800384c    0x18  <for P2 s0>
+                            - 0x08003864  0x3778
+
+"P2", part 1 of 3:                          0x18
+  P2 s0                       0x20000000    0x18  <Init block>
+    .data            inited   0x20000000    0x10  stm32f10x_rcc.o [1]
+    .data            inited   0x20000010     0x4  stm32f10x_rcc.o [1]
+    .data            inited   0x20000014     0x4  system_stm32f10x.o [1]
+                            - 0x20000018    0x18
+
+"P2", part 2 of 3:                        0x1c00
+  .bss               zero     0x20000018   0x3e8  ucos_ii.o [1]
+  .bss               zero     0x20000400   0x340  ucos_ii.o [1]
+  .bss               zero     0x20000740   0x280  ucos_ii.o [1]
+  .bss               zero     0x200009c0   0x200  GPRS.o [1]
+  .bss               zero     0x20000bc0   0x200  GPRS.o [1]
+  .bss               zero     0x20000dc0   0x200  Usart.o [1]
+  .bss               zero     0x20000fc0   0x200  Usart.o [1]
+  .bss               zero     0x200011c0   0x200  main.o [1]
+  .bss               zero     0x200013c0   0x200  ucos_ii.o [1]
+  .bss               zero     0x200015c0   0x200  ucos_ii.o [1]
+  .bss               zero     0x200017c0   0x100  Usart.o [1]
+  .bss               zero     0x200018c0   0x100  ucos_ii.o [1]
+  .bss               zero     0x200019c0    0xf0  ucos_ii.o [1]
+  .bss               zero     0x20001ab0    0x64  ucos_ii.o [1]
+  .bss               zero     0x20001b14    0x40  ucos_ii.o [1]
+  .bss               zero     0x20001b54    0x28  GPRS.o [1]
+  .bss               zero     0x20001b7c    0x24  GPRS.o [1]
+  .bss               zero     0x20001ba0     0x8  ucos_ii.o [1]
+  .bss               zero     0x20001ba8     0x4  GPRS.o [1]
+  .bss               zero     0x20001bac     0x4  GPRS.o [1]
+  .bss               zero     0x20001bb0     0x4  GPRS.o [1]
+  .bss               zero     0x20001bb4     0x4  GPRS.o [1]
+  .bss               zero     0x20001bb8     0x4  GPRS.o [1]
+  .bss               zero     0x20001bbc     0x4  SpiFlash.o [1]
+  .bss               zero     0x20001bc0     0x4  Usart.o [1]
+  .bss               zero     0x20001bc4     0x4  Usart.o [1]
+  .bss               zero     0x20001bc8     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001bcc     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001bd0     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001bd4     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001bd8     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001bdc     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001be0     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001be4     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001be8     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001bec     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001bf0     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001bf4     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001bf8     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001bfc     0x4  ucos_ii.o [1]
+  .bss               zero     0x20001c00     0x2  Usart.o [1]
+  .bss               zero     0x20001c02     0x2  os_cpu_c.o [1]
+  .bss               zero     0x20001c04     0x2  ucos_ii.o [1]
+  .bss               zero     0x20001c06     0x2  ucos_ii.o [1]
+  .bss               zero     0x20001c08     0x1  GPRS.o [1]
+  .bss               zero     0x20001c09     0x1  GPRS.o [1]
+  .bss               zero     0x20001c0a     0x1  GPRS.o [1]
+  .bss               zero     0x20001c0b     0x1  SpiFlash.o [1]
+  .bss               zero     0x20001c0c     0x1  ucos_ii.o [1]
+  .bss               zero     0x20001c0d     0x1  ucos_ii.o [1]
+  .bss               zero     0x20001c0e     0x1  ucos_ii.o [1]
+  .bss               zero     0x20001c0f     0x1  ucos_ii.o [1]
+  .bss               zero     0x20001c10     0x1  ucos_ii.o [1]
+  .bss               zero     0x20001c11     0x1  ucos_ii.o [1]
+  .bss               zero     0x20001c12     0x1  ucos_ii.o [1]
+  .bss               zero     0x20001c13     0x1  ucos_ii.o [1]
+                            - 0x20001c14  0x1bfc
+
+"P2", part 3 of 3:                         0x800
+  CSTACK                      0x20001c18   0x800  <Block>
+    CSTACK           uninit   0x20001c18   0x800  <Block tail>
+                            - 0x20002418   0x800
+
+
+*******************************************************************************
+*** INIT TABLE
+***
+
+          Address     Size
+          -------     ----
+Zero (__iar_zero_init3)
+    1 destination range, total size 0x1bfc:
+          0x20000018  0x1bfc
+
+Copy (__iar_copy_init3)
+    1 source range, total size 0x18:
+          0x0800384c    0x18
+    1 destination range, total size 0x18:
+          0x20000000    0x18
+
+
+
+*******************************************************************************
+*** MODULE SUMMARY
+***
+
+    Module                  ro code  ro data  rw data
+    ------                  -------  -------  -------
+E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj: [1]
+    GPRS.o                    3 694      480    1 123
+    SpiFlash.o                  508                 5
+    Usart.o                   1 012       12    1 290
+    led.o                       124
+    main.o                      336               512
+    misc.o                      132
+    os_cpu_a.o                  160
+    os_cpu_c.o                  272                 2
+    os_dbg.o                               2
+    startup_stm32f10x_md.o      460
+    stm32f10x_flash.o           380
+    stm32f10x_gpio.o            216
+    stm32f10x_it.o               82
+    stm32f10x_rcc.o             348       20       20
+    stm32f10x_spi.o             120
+    stm32f10x_usart.o           496
+    system_stm32f10x.o          344        4        4
+    ucos_ii.o                 4 424      256    4 232
+    -------------------------------------------------
+    Total:                   13 108      774    7 188
+
+command line: [2]
+    -------------------------------------------------
+    Total:
+
+dl7M_tln.a: [3]
+    exit.o                        4
+    low_level_init.o              4
+    -------------------------------------------------
+    Total:                        8
+
+rt7M_tl.a: [4]
+    ABImemcpy.o                 118
+    ABImemset.o                 102
+    bwt_init3c.o
+    cexit.o                      10
+    cmain.o                      22
+    copy_init3.o                 46
+    cstartup_M.o                 12
+    data_init3.o                 44
+    memcmp.o                     98
+    zero_init3.o                 34
+    -------------------------------------------------
+    Total:                      486
+
+shb_l.a: [5]
+    exit.o                       20
+    -------------------------------------------------
+    Total:                       20
+
+    Gaps                          4
+    Linker created                        36    2 048
+-----------------------------------------------------
+    Grand Total:             13 626      810    9 236
+
+
+*******************************************************************************
+*** ENTRY LIST
+***
+
+Entry                      Address   Size  Type      Object
+-----                      -------   ----  ----      ------
+?main                   0x080035ad         Code  Gb  cmain.o [4]
+ADC1_2_IRQHandler       0x080037e9         Code  Wk  startup_stm32f10x_md.o [1]
+ADCPrescTable           0x20000010    0x4  Data  Lc  stm32f10x_rcc.o [1]
+APBAHBPrescTable        0x20000000   0x10  Data  Lc  stm32f10x_rcc.o [1]
+BusFault_Handler        0x080034cb    0xa  Code  Gb  stm32f10x_it.o [1]
+CAN1_RX1_IRQHandler     0x080037f5         Code  Wk  startup_stm32f10x_md.o [1]
+CAN1_SCE_IRQHandler     0x080037f9         Code  Wk  startup_stm32f10x_md.o [1]
+CSTACK$$Base            0x20001c18          --   Gb  - Linker created -
+CSTACK$$Limit           0x20002418          --   Gb  - Linker created -
+ConnectToServer         0x0800189f  0x114  Code  Gb  GPRS.o [1]
+DMA1_Channel1_IRQHandler
+                        0x080037cd         Code  Wk  startup_stm32f10x_md.o [1]
+DMA1_Channel2_IRQHandler
+                        0x080037d1         Code  Wk  startup_stm32f10x_md.o [1]
+DMA1_Channel3_IRQHandler
+                        0x080037d5         Code  Wk  startup_stm32f10x_md.o [1]
+DMA1_Channel4_IRQHandler
+                        0x080037d9         Code  Wk  startup_stm32f10x_md.o [1]
+DMA1_Channel5_IRQHandler
+                        0x080037dd         Code  Wk  startup_stm32f10x_md.o [1]
+DMA1_Channel6_IRQHandler
+                        0x080037e1         Code  Wk  startup_stm32f10x_md.o [1]
+DMA1_Channel7_IRQHandler
+                        0x080037e5         Code  Wk  startup_stm32f10x_md.o [1]
+DebugMon_Handler        0x080034e1    0x2  Code  Gb  stm32f10x_it.o [1]
+EXTI0_IRQHandler        0x080037b9         Code  Wk  startup_stm32f10x_md.o [1]
+EXTI15_10_IRQHandler    0x08003841         Code  Wk  startup_stm32f10x_md.o [1]
+EXTI1_IRQHandler        0x080037bd         Code  Wk  startup_stm32f10x_md.o [1]
+EXTI2_IRQHandler        0x080037c1         Code  Wk  startup_stm32f10x_md.o [1]
+EXTI3_IRQHandler        0x080037c5         Code  Wk  startup_stm32f10x_md.o [1]
+EXTI4_IRQHandler        0x080037c9         Code  Wk  startup_stm32f10x_md.o [1]
+EXTI9_5_IRQHandler      0x080037fd         Code  Wk  startup_stm32f10x_md.o [1]
+FLASH_ClearFlag         0x08003073    0x6  Code  Gb  stm32f10x_flash.o [1]
+FLASH_ErasePage         0x08002f95   0x5e  Code  Gb  stm32f10x_flash.o [1]
+FLASH_GetBank1Status    0x08003079   0x2c  Code  Gb  stm32f10x_flash.o [1]
+FLASH_IRQHandler        0x080037b1         Code  Wk  startup_stm32f10x_md.o [1]
+FLASH_Init              0x08002be7   0xbe  Code  Gb  SpiFlash.o [1]
+FLASH_Lock              0x08002f83   0x12  Code  Gb  stm32f10x_flash.o [1]
+FLASH_ProgramWord       0x08002ff3   0x80  Code  Gb  stm32f10x_flash.o [1]
+FLASH_ReadID            0x08002ced   0x46  Code  Gb  SpiFlash.o [1]
+FLASH_SendByte          0x08002ca5   0x48  Code  Gb  SpiFlash.o [1]
+FLASH_Unlock            0x08002f6d   0x16  Code  Gb  stm32f10x_flash.o [1]
+FLASH_WaitForLastOperation
+                        0x080030bd   0x2c  Code  Gb  stm32f10x_flash.o [1]
+FactoryReset            0x0800213d   0x5c  Code  Gb  GPRS.o [1]
+GPIO_Init               0x0800238d   0xcc  Code  Gb  stm32f10x_gpio.o [1]
+GPIO_ResetBits          0x0800245f    0x6  Code  Gb  stm32f10x_gpio.o [1]
+GPIO_SetBits            0x08002459    0x6  Code  Gb  stm32f10x_gpio.o [1]
+GPRSTimer               0x20001bb4    0x4  Data  Gb  GPRS.o [1]
+GPRS_Init               0x080013e5  0x230  Code  Gb  GPRS.o [1]
+GPRS_TimerCallback      0x08001849   0x56  Code  Lc  GPRS.o [1]
+GRST                    0x080020f1   0x48  Code  Gb  GPRS.o [1]
+HardFault_Handler       0x080034b7    0xa  Code  Gb  stm32f10x_it.o [1]
+HeartBeat_TimerCallback
+                        0x08001791   0xb6  Code  Lc  GPRS.o [1]
+HeartTimer              0x20001bb8    0x4  Data  Gb  GPRS.o [1]
+I2C1_ER_IRQHandler      0x08003821         Code  Wk  startup_stm32f10x_md.o [1]
+I2C1_EV_IRQHandler      0x0800381d         Code  Wk  startup_stm32f10x_md.o [1]
+I2C2_ER_IRQHandler      0x08003829         Code  Wk  startup_stm32f10x_md.o [1]
+I2C2_EV_IRQHandler      0x08003825         Code  Wk  startup_stm32f10x_md.o [1]
+LED_Init                0x080026d9   0x2c  Code  Gb  led.o [1]
+LED_Off                 0x0800272b   0x26  Code  Gb  led.o [1]
+LED_On                  0x08002705   0x26  Code  Gb  led.o [1]
+MemManage_Handler       0x080034c1    0xa  Code  Gb  stm32f10x_it.o [1]
+NMI_Handler             0x080034b5    0x2  Code  Gb  stm32f10x_it.o [1]
+NVIC_Init               0x0800265f   0x66  Code  Gb  misc.o [1]
+NVIC_PriorityGroupConfig
+                        0x08002655    0xa  Code  Gb  misc.o [1]
+NVIC_SystemReset        0x08002bcd   0x1a  Code  Lc  SpiFlash.o [1]
+NVIC_SystemReset        0x08003491   0x1a  Code  Lc  stm32f10x_it.o [1]
+OSCtxSw                 0x0800136f         Code  Gb  os_cpu_a.o [1]
+OSCtxSwCtr              0x20001bc8    0x4  Data  Gb  ucos_ii.o [1]
+OSDebugEn               0x080034e2    0x2  Data  Gb  os_dbg.o [1]
+OSEventFreeList         0x20001bcc    0x4  Data  Gb  ucos_ii.o [1]
+OSEventTbl              0x20000018  0x3e8  Data  Gb  ucos_ii.o [1]
+OSIdleCtr               0x20001bd0    0x4  Data  Gb  ucos_ii.o [1]
+OSInit                  0x080000ed   0x2c  Code  Gb  ucos_ii.o [1]
+OSInitHookBegin         0x08001235    0x8  Code  Gb  os_cpu_c.o [1]
+OSInitHookEnd           0x0800123d    0x2  Code  Gb  os_cpu_c.o [1]
+OSIntCtxSw              0x08001377         Code  Gb  os_cpu_a.o [1]
+OSIntEnter              0x08000119   0x24  Code  Gb  ucos_ii.o [1]
+OSIntExit               0x0800013d   0x82  Code  Gb  ucos_ii.o [1]
+OSIntNesting            0x20001c0c    0x1  Data  Gb  ucos_ii.o [1]
+OSLockNesting           0x20001c0d    0x1  Data  Gb  ucos_ii.o [1]
+OSMemFreeList           0x20001be4    0x4  Data  Gb  ucos_ii.o [1]
+OSMemTbl                0x20001ab0   0x64  Data  Gb  ucos_ii.o [1]
+OSPrioCur               0x20001c0e    0x1  Data  Gb  ucos_ii.o [1]
+OSPrioHighRdy           0x20001c0f    0x1  Data  Gb  ucos_ii.o [1]
+OSQCreate               0x0800089d   0x9e  Code  Gb  ucos_ii.o [1]
+OSQFreeList             0x20001be8    0x4  Data  Gb  ucos_ii.o [1]
+OSQPend                 0x08000959  0x126  Code  Gb  ucos_ii.o [1]
+OSQPost                 0x08000a89   0x72  Code  Gb  ucos_ii.o [1]
+OSQTbl                  0x200019c0   0xf0  Data  Gb  ucos_ii.o [1]
+OSRdyGrp                0x20001c10    0x1  Data  Gb  ucos_ii.o [1]
+OSRdyTbl                0x20001ba0    0x8  Data  Gb  ucos_ii.o [1]
+OSRunning               0x20001c11    0x1  Data  Gb  ucos_ii.o [1]
+OSSchedLock             0x080001bf   0x3a  Code  Gb  ucos_ii.o [1]
+OSSchedUnlock           0x080001f9   0x5a  Code  Gb  ucos_ii.o [1]
+OSSemCreate             0x08000b4b   0x4a  Code  Gb  ucos_ii.o [1]
+OSSemPend               0x08000b9d   0xf0  Code  Gb  ucos_ii.o [1]
+OSSemPost               0x08000ca5   0x5c  Code  Gb  ucos_ii.o [1]
+OSSemSet                0x08000d01   0x3c  Code  Gb  ucos_ii.o [1]
+OSStart                 0x08000253   0x42  Code  Gb  ucos_ii.o [1]
+OSStartHighRdy          0x08001353         Code  Gb  os_cpu_a.o [1]
+OSTCBCur                0x20001bd4    0x4  Data  Gb  ucos_ii.o [1]
+OSTCBFreeList           0x20001bd8    0x4  Data  Gb  ucos_ii.o [1]
+OSTCBHighRdy            0x20001bdc    0x4  Data  Gb  ucos_ii.o [1]
+OSTCBInitHook           0x080012c1    0x2  Code  Gb  os_cpu_c.o [1]
+OSTCBList               0x20001be0    0x4  Data  Gb  ucos_ii.o [1]
+OSTCBPrioTbl            0x200018c0  0x100  Data  Gb  ucos_ii.o [1]
+OSTCBTbl                0x20000400  0x340  Data  Gb  ucos_ii.o [1]
+OSTaskCreateExt         0x08000d41   0xc2  Code  Gb  ucos_ii.o [1]
+OSTaskCreateHook        0x0800123f    0x2  Code  Gb  os_cpu_c.o [1]
+OSTaskCtr               0x20001c12    0x1  Data  Gb  ucos_ii.o [1]
+OSTaskIdleHook          0x08001241    0x2  Code  Gb  os_cpu_c.o [1]
+OSTaskIdleStk           0x200013c0  0x200  Data  Gb  ucos_ii.o [1]
+OSTaskStkInit           0x08001243   0x7c  Code  Gb  os_cpu_c.o [1]
+OSTaskSwHook            0x080012bf    0x2  Code  Gb  os_cpu_c.o [1]
+OSTickStepState         0x20001c13    0x1  Data  Gb  ucos_ii.o [1]
+OSTime                  0x20001bec    0x4  Data  Gb  ucos_ii.o [1]
+OSTimeDly               0x08000e09   0x7a  Code  Gb  ucos_ii.o [1]
+OSTimeGet               0x08000e89   0x1a  Code  Gb  ucos_ii.o [1]
+OSTimeTick              0x08000295   0xec  Code  Gb  ucos_ii.o [1]
+OSTimeTickHook          0x080012c3   0x20  Code  Gb  os_cpu_c.o [1]
+OSTmrCreate             0x08000ea3   0x78  Code  Gb  ucos_ii.o [1]
+OSTmrCtr                0x20001c02    0x2  Data  Lc  os_cpu_c.o [1]
+OSTmrFree               0x20001c04    0x2  Data  Gb  ucos_ii.o [1]
+OSTmrFreeList           0x20001bfc    0x4  Data  Gb  ucos_ii.o [1]
+OSTmrSem                0x20001bf4    0x4  Data  Gb  ucos_ii.o [1]
+OSTmrSemSignal          0x20001bf8    0x4  Data  Gb  ucos_ii.o [1]
+OSTmrSignal             0x08000fab    0xe  Code  Gb  ucos_ii.o [1]
+OSTmrStart              0x08000f29   0x82  Code  Gb  ucos_ii.o [1]
+OSTmrTaskStk            0x200015c0  0x200  Data  Gb  ucos_ii.o [1]
+OSTmrTbl                0x20000740  0x280  Data  Gb  ucos_ii.o [1]
+OSTmrTime               0x20001bf0    0x4  Data  Gb  ucos_ii.o [1]
+OSTmrUsed               0x20001c06    0x2  Data  Gb  ucos_ii.o [1]
+OSTmrWheelTbl           0x20001b14   0x40  Data  Gb  ucos_ii.o [1]
+OSTmr_Alloc             0x08000fb9   0x34  Code  Lc  ucos_ii.o [1]
+OSTmr_Init              0x08000ff5   0x94  Code  Gb  ucos_ii.o [1]
+OSTmr_InitTask          0x08001089   0x2c  Code  Lc  ucos_ii.o [1]
+OSTmr_Link              0x080010b5   0x6e  Code  Lc  ucos_ii.o [1]
+OSTmr_Task              0x08001181   0x7a  Code  Lc  ucos_ii.o [1]
+OSTmr_Unlink            0x0800112d   0x4a  Code  Lc  ucos_ii.o [1]
+OSUnMapTbl              0x08003390  0x100  Data  Gb  ucos_ii.o [1]
+OS_CPU_SR_Restore       0x0800134d         Code  Gb  os_cpu_a.o [1]
+OS_CPU_SR_Save          0x08001345         Code  Gb  os_cpu_a.o [1]
+OS_CPU_SysTickInit      0x08001301   0x2e  Code  Gb  os_cpu_c.o [1]
+OS_EventTaskRdy         0x08000381   0x7a  Code  Gb  ucos_ii.o [1]
+OS_EventTaskRemove      0x08000487   0x32  Code  Gb  ucos_ii.o [1]
+OS_EventTaskWait        0x080003fb   0x8c  Code  Gb  ucos_ii.o [1]
+OS_EventWaitListInit    0x080004b9   0x1a  Code  Gb  ucos_ii.o [1]
+OS_InitEventList        0x080004d3   0x5a  Code  Lc  ucos_ii.o [1]
+OS_InitMisc             0x0800052d   0x3a  Code  Lc  ucos_ii.o [1]
+OS_InitRdyList          0x08000567   0x40  Code  Lc  ucos_ii.o [1]
+OS_InitTCBList          0x080005d7   0x66  Code  Lc  ucos_ii.o [1]
+OS_InitTaskIdle         0x080005a7   0x30  Code  Lc  ucos_ii.o [1]
+OS_MemClr               0x0800063d   0x12  Code  Gb  ucos_ii.o [1]
+OS_MemInit              0x08000833   0x52  Code  Gb  ucos_ii.o [1]
+OS_QInit                0x08000afb   0x50  Code  Gb  ucos_ii.o [1]
+OS_Sched                0x0800064f   0x60  Code  Gb  ucos_ii.o [1]
+OS_SchedNew             0x080006af   0x2a  Code  Lc  ucos_ii.o [1]
+OS_TCBInit              0x080006fd  0x136  Code  Gb  ucos_ii.o [1]
+OS_TaskIdle             0x080006d9   0x24  Code  Gb  ucos_ii.o [1]
+PVD_IRQHandler          0x080037a5         Code  Wk  startup_stm32f10x_md.o [1]
+ParameterBuffer         0x20001b7c   0x24  Data  Gb  GPRS.o [1]
+PendSV_Handler          0x0800137f         Code  Gb  os_cpu_a.o [1]
+PrintChar               0x08002069   0x32  Code  Lc  GPRS.o [1]
+PrintChar               0x08002aad   0x32  Code  Lc  Usart.o [1]
+PrintString             0x080020b9   0x16  Code  Gb  GPRS.o [1]
+PrintStringInLength     0x080020cf   0x22  Code  Gb  GPRS.o [1]
+PrintStrings            0x08002b33   0x16  Code  Gb  Usart.o [1]
+PrintToScreen           0x08002b11   0x22  Code  Gb  Usart.o [1]
+RCC_APB1PeriphClockCmd  0x0800234f   0x20  Code  Gb  stm32f10x_rcc.o [1]
+RCC_APB2PeriphClockCmd  0x0800232f   0x20  Code  Gb  stm32f10x_rcc.o [1]
+RCC_GetClocksFreq       0x0800226f   0xc0  Code  Gb  stm32f10x_rcc.o [1]
+RCC_HCLKConfig          0x08002231   0x14  Code  Gb  stm32f10x_rcc.o [1]
+RCC_IRQHandler          0x080037b5         Code  Wk  startup_stm32f10x_md.o [1]
+RCC_PCLK1Config         0x08002245   0x14  Code  Gb  stm32f10x_rcc.o [1]
+RCC_PCLK2Config         0x08002259   0x16  Code  Gb  stm32f10x_rcc.o [1]
+RTCAlarm_IRQHandler     0x08003845         Code  Wk  startup_stm32f10x_md.o [1]
+RTC_IRQHandler          0x080037ad         Code  Wk  startup_stm32f10x_md.o [1]
+ReadDataFlag            0x20001c09    0x1  Data  Gb  GPRS.o [1]
+ReadFlashParameter      0x08002d33   0x2c  Code  Gb  SpiFlash.o [1]
+RecvCount               0x20001c08    0x1  Data  Lc  GPRS.o [1]
+Region$$Table$$Base     0x08003510          --   Gb  - Linker created -
+Region$$Table$$Limit    0x08003534          --   Gb  - Linker created -
+Reset_Handler           0x080036e9         Code  Wk  startup_stm32f10x_md.o [1]
+RxBuf3RecvCount         0x20001c00    0x2  Data  Lc  Usart.o [1]
+RxBuffer2               0x200009c0  0x200  Data  Gb  GPRS.o [1]
+RxBuffer3               0x20000dc0  0x200  Data  Gb  Usart.o [1]
+SPI1_IRQHandler         0x0800382d         Code  Wk  startup_stm32f10x_md.o [1]
+SPI2_IRQHandler         0x08003831         Code  Wk  startup_stm32f10x_md.o [1]
+SPI_Cmd                 0x08002f35   0x1c  Code  Gb  stm32f10x_spi.o [1]
+SPI_I2S_GetFlagStatus   0x08002f59   0x14  Code  Gb  stm32f10x_spi.o [1]
+SPI_I2S_ReceiveData     0x08002f55    0x4  Code  Gb  stm32f10x_spi.o [1]
+SPI_I2S_SendData        0x08002f51    0x4  Code  Gb  stm32f10x_spi.o [1]
+SPI_Init                0x08002ef5   0x40  Code  Gb  stm32f10x_spi.o [1]
+SVC_Handler             0x080034df    0x2  Code  Gb  stm32f10x_it.o [1]
+SetSysClock             0x0800313d    0x8  Code  Lc  system_stm32f10x.o [1]
+SetSysClockTo36         0x08003145   0xdc  Code  Lc  system_stm32f10x.o [1]
+SpiFlashW25Q16Inited    0x20001c0b    0x1  Data  Gb  SpiFlash.o [1]
+SysInitTask             0x08003241   0xe0  Code  Gb  main.o [1]
+SysInitTaskStk          0x200011c0  0x200  Data  Gb  main.o [1]
+SysTick_Handler         0x080012e3   0x1e  Code  Gb  os_cpu_c.o [1]
+SystemCoreClock         0x20000014    0x4  Data  Gb  system_stm32f10x.o [1]
+SystemInit              0x080030e9   0x54  Code  Gb  system_stm32f10x.o [1]
+TAMPER_IRQHandler       0x080037a9         Code  Wk  startup_stm32f10x_md.o [1]
+TIM1_BRK_IRQHandler     0x08003801         Code  Wk  startup_stm32f10x_md.o [1]
+TIM1_CC_IRQHandler      0x0800380d         Code  Wk  startup_stm32f10x_md.o [1]
+TIM1_TRG_COM_IRQHandler
+                        0x08003809         Code  Wk  startup_stm32f10x_md.o [1]
+TIM1_UP_IRQHandler      0x08003805         Code  Wk  startup_stm32f10x_md.o [1]
+TIM2_IRQHandler         0x08003811         Code  Wk  startup_stm32f10x_md.o [1]
+TIM3_IRQHandler         0x08003815         Code  Wk  startup_stm32f10x_md.o [1]
+TIM4_IRQHandler         0x08003819         Code  Wk  startup_stm32f10x_md.o [1]
+TxTOGprs                0x20000fc0  0x200  Data  Gb  Usart.o [1]
+USART1_IRQHandler       0x08003835         Code  Wk  startup_stm32f10x_md.o [1]
+USART2_IRQHandler       0x08001615  0x17a  Code  Gb  GPRS.o [1]
+USART3_IRQHandler       0x0800289f   0x54  Code  Gb  Usart.o [1]
+USART_ClearFlag         0x080025c3    0xc  Code  Gb  stm32f10x_usart.o [1]
+USART_ClearITPendingBit
+                        0x08002633   0x22  Code  Gb  stm32f10x_usart.o [1]
+USART_Cmd               0x08002529   0x1c  Code  Gb  stm32f10x_usart.o [1]
+USART_GetFlagStatus     0x080025a7   0x1c  Code  Gb  stm32f10x_usart.o [1]
+USART_GetITStatus       0x080025cf   0x64  Code  Gb  stm32f10x_usart.o [1]
+USART_ITConfig          0x08002545   0x52  Code  Gb  stm32f10x_usart.o [1]
+USART_Init              0x08002465   0xbe  Code  Gb  stm32f10x_usart.o [1]
+USART_ReceiveData       0x0800259f    0x8  Code  Gb  stm32f10x_usart.o [1]
+USART_SendData          0x08002597    0x8  Code  Gb  stm32f10x_usart.o [1]
+USBWakeUp_IRQHandler    0x08003849         Code  Wk  startup_stm32f10x_md.o [1]
+USB_HP_CAN1_TX_IRQHandler
+                        0x080037ed         Code  Wk  startup_stm32f10x_md.o [1]
+USB_LP_CAN1_RX0_IRQHandler
+                        0x080037f1         Code  Wk  startup_stm32f10x_md.o [1]
+UsageFault_Handler      0x080034d5    0xa  Code  Gb  stm32f10x_it.o [1]
+Usart2ProcessQueueMsg   0x20001b54   0x28  Data  Gb  GPRS.o [1]
+Usart2ProcessTask       0x080019c5  0x684  Code  Gb  GPRS.o [1]
+Usart2ProcessTaskStk    0x20000bc0  0x200  Data  Gb  GPRS.o [1]
+Usart2_PostMsg          0x08002049   0x1a  Code  Gb  GPRS.o [1]
+Usart3ProcessTask       0x080028f5  0x1b8  Code  Gb  Usart.o [1]
+Usart3ProcessTaskStk    0x200017c0  0x100  Data  Gb  Usart.o [1]
+Usart3Timer             0x20001bc0    0x4  Data  Gb  Usart.o [1]
+Usart3_TimerCallback    0x0800286d   0x32  Code  Lc  Usart.o [1]
+Usart_Init              0x08002755  0x118  Code  Gb  Usart.o [1]
+WWDG_IRQHandler         0x080037a1         Code  Wk  startup_stm32f10x_md.o [1]
+WriteFlashParameter     0x08002d5f   0x46  Code  Gb  SpiFlash.o [1]
+__aeabi_memcpy          0x08002e5d         Code  Gb  ABImemcpy.o [4]
+__aeabi_memcpy4         0x08002e7d         Code  Gb  ABImemcpy.o [4]
+__aeabi_memcpy8         0x08002e7d         Code  Gb  ABImemcpy.o [4]
+__aeabi_memset          0x08002dc9         Code  Gb  ABImemset.o [4]
+__cmain                 0x080035ad         Code  Gb  cmain.o [4]
+__exit                  0x080035d9   0x14  Code  Gb  exit.o [5]
+__iar_Memset            0x08002dc9         Code  Gb  ABImemset.o [4]
+__iar_Memset_word       0x08002dd1         Code  Gb  ABImemset.o [4]
+__iar_SB                0x0800384c         Data  Gb  bwt_init3c.o [4]
+__iar_copy_init3        0x08002e2f   0x2e  Code  Gb  copy_init3.o [4]
+__iar_data_init3        0x080034e5   0x2c  Code  Gb  data_init3.o [4]
+__iar_program_start     0x08003759         Code  Gb  cstartup_M.o [4]
+__iar_zero_init3        0x08002ed3   0x22  Code  Gb  zero_init3.o [4]
+__low_level_init        0x080035c3    0x4  Code  Gb  low_level_init.o [3]
+__vector_table          0x08000000         Data  Gb  startup_stm32f10x_md.o [1]
+_call_main              0x080035b9         Code  Gb  cmain.o [4]
+_exit                   0x080035cd         Code  Gb  cexit.o [4]
+_main                   0x080035bf         Code  Gb  cmain.o [4]
+exit                    0x080035c7    0x4  Code  Gb  exit.o [3]
+gSysInfo                0x20001ba8    0x4  Data  Gb  GPRS.o [1]
+main                    0x08003321   0x58  Code  Gb  main.o [1]
+memcmp                  0x08002b5d         Code  Gb  memcmp.o [4]
+memcpy                  0x08002bbf    0xe  Code  Gb  GPRS.o [1]
+memset                  0x08002b49   0x14  Code  Gb  GPRS.o [1]
+pFlashMutexSem          0x20001bbc    0x4  Data  Gb  SpiFlash.o [1]
+pUsart2QueueHandle      0x20001bb0    0x4  Data  Gb  GPRS.o [1]
+pUsart2RecvSem          0x20001bac    0x4  Data  Gb  GPRS.o [1]
+pUsart3RecvSem          0x20001bc4    0x4  Data  Gb  Usart.o [1]
+
+
+[1] = E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj
+[2] = command line
+[3] = dl7M_tln.a
+[4] = rt7M_tl.a
+[5] = shb_l.a
+
+  13 626 bytes of readonly  code memory
+     810 bytes of readonly  data memory
+   9 236 bytes of readwrite data memory
+
+Errors: none
+Warnings: none

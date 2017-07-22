@@ -1,0 +1,30 @@
+###############################################################################
+#
+# IAR Assembler V2.10.4.157 for STM8                      21/Jul/2017  08:34:25
+# Copyright 2010-2015 IAR Systems AB.
+#
+#    Source file  =  
+#        E:\SVN\Research\Personal\wangjinlong\SoftWare\Atomthreads\atomport-asm-iar.s
+#    Command line =  
+#        E:\SVN\Research\Personal\wangjinlong\SoftWare\Atomthreads\atomport-asm-iar.s
+#        -M<> -r -ld E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\List\
+#        --code_model small --data_model medium -o
+#        E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\
+#    List file    =  
+#        E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\List\atomport-asm-iar.lst
+#    Object file  =  
+#        E:\SVN\Research\Personal\wangjinlong\SoftWare\Debug\Obj\atomport-asm-iar.o
+#
+###############################################################################
+
+##############################################################################
+# Module ATOMPORTASM                                                         #
+##############################################################################
+
+ 
+ 88 bytes in section .near_func.text  , module ATOMPORTASM
+ 
+ 88 bytes of CODE memory  in module ATOMPORTASM
+
+Errors: none
+Warnings: 1
