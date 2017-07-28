@@ -27,6 +27,12 @@ WINDOW_PUBLIC void WinAddressSetProc(uint8_t Msg);
 WINDOW_PUBLIC void WinSelfCheckProc(uint8_t Msg);
 WINDOW_PUBLIC void WinReStartProc(uint8_t Msg);
 
+WINDOW_PUBLIC uint8_t BlinkFlag;
+WINDOW_PUBLIC uint8_t OptionBit;
+WINDOW_PUBLIC uint8_t IntoEdit;
+
+WINDOW_PUBLIC uint8_t BitRam[6];
+
 #endif
 
 

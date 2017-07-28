@@ -78,4 +78,10 @@ LCD_PUBLIC void LCD_SetPixel(uint8_t Com, uint8_t Seg, LCD_PIXEL_SET_TypeDef On_
 LCD_PUBLIC void LCD_DisplayChar(uint8_t ch,uint8_t position,uint8_t signbit);
 LCD_PUBLIC void LCD_Printf(char *string);
 LCD_PUBLIC void LCD_DesktopDisp(uint8_t Ch, uint16_t Data);
+LCD_PUBLIC void LCD_AdressDisp(void);
+LCD_PUBLIC void LCD_MenuDisp(uint8_t MenuIndex);
+LCD_PUBLIC void LCD_BlinkDisop(void);
+LCD_PUBLIC void LCD_ChannelSetDisp(uint8_t Ch);
+
+LCD_PUBLIC void LCD_PrintfSpecialChar(unsigned char Pos, unsigned char PixelOnoff);
 #endif

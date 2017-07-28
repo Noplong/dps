@@ -63,24 +63,35 @@ void WriteFlashParameter(void)
 }
 void FactoryReset(void)
 {
-    ParameterBuffer.ParameterConfig.Adress = 1;
     ParameterBuffer.ParameterConfig.Music = MUSIC_NORMAL;
 
     ParameterBuffer.ParameterConfig.ChannelAlarmValue[0] = 0x11f4;//500mA
     ParameterBuffer.ParameterConfig.ChannelAlarmValue[1] = 0x2046;//500mA
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[2] = 0x1000;//500mA
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[3] = 0x1000;//500mA
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[4] = 0x1000;//500mA
+//    ParameterBuffer.ParameterConfig.ChannelAlarmValue[2] = 0x1000;//500mA
+//    ParameterBuffer.ParameterConfig.ChannelAlarmValue[3] = 0x1000;//500mA
+//    ParameterBuffer.ParameterConfig.ChannelAlarmValue[4] = 0x1000;//500mA
+//    
+//    ParameterBuffer.ParameterConfig.ChannelAlarmValue[5] = 0x3000;//500mA
+//    ParameterBuffer.ParameterConfig.ChannelAlarmValue[6] = 0x3000;
+//    ParameterBuffer.ParameterConfig.ChannelAlarmValue[7] = 0x3000;//500mA
     
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[5] = 0x3000;//500mA
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[6] = 0x3000;
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[7] = 0x3000;//500mA
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[2] = 0x11f4;//500mA
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[3] = 0x11f4;//500mA
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[4] = 0x11f4;//500mA
+    
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[5] = 0x3064;//500mA
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[6] = 0x3064;
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[7] = 0x3064;//500mA
 
     ParameterBuffer.ParameterConfig.ChannelAdParameter[0] = 235;//200mAʱADֵ
     ParameterBuffer.ParameterConfig.ChannelAdParameter[1] = 990;//800mAʱADֵ
     
     ParameterBuffer.ParameterConfig.ChannelAdParameter[2] = 235;//1AʱADֵ
     ParameterBuffer.ParameterConfig.ChannelAdParameter[3] = 2656;//5AʱADֵ
+    memcpy(ParameterBuffer.ParameterConfig.ConnectIP, "123.207.71.208,6666\r\n", 23);
+//    memcpy(ParameterBuffer.ParameterConfig.ConnectIP, "115.28.103.131,40000\r\n", 23);
+    ParameterBuffer.ParameterConfig.PackageHead_From  =1234;
+    ParameterBuffer.ParameterConfig.PackageHead_To  =1000;
 
 //    ParameterBuffer.ParameterConfig.ChannelRatioIn[0] = 100;//100:5
 //    ParameterBuffer.ParameterConfig.ChannelRatioIn[1] = 100;

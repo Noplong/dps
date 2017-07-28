@@ -35,6 +35,7 @@ void LedBeepKeyInit(void)
 
     //KEY
     GPIO_Init(GPIOG, GPIO_Pin_2 | GPIO_Pin_3, GPIO_Mode_In_PU_No_IT);
+    GPIO_Init(GPIOF, GPIO_Pin_7, GPIO_Mode_In_PU_No_IT);
 
     status = atomThreadCreate(&KeyScanTask_Tcb,
                               KEYSCAN_TASK_PRIO, KeyScanTask, 0,
@@ -81,18 +82,19 @@ uint8_t KEY_GetKey(void)
     uint8_t key_value = 0;
     uint8_t KEY;
 
-    key_value = (GPIO_ReadInputData(GPIOG) & 0x0C);
+    key_value = ((GPIO_ReadInputData(GPIOG) & 0x0C)
+                 | (GPIO_ReadInputData(GPIOF) & 0x80));
 
     switch(key_value)
     {
-        case 0x08:
+        case 0x88:
             KEY = KEY_1;
             break;
-        case 0x04:
+        case 0x84:
             KEY = KEY_2;
             break;
         case 0x0C:
-            KEY = 0xFF;
+            KEY = KEY_3;
             break;
         default:
             KEY = 0xFF;
@@ -124,6 +126,7 @@ static void KeyScanTask(uint32_t param)
             {
                 case KEY_1:
                 case KEY_2:
+                case KEY_3:
                     ParameterSysStatus.KeyValue = key;
                     GUI_ShowWindow(CurrentWindow, WM_KEY);
                     break;
@@ -296,35 +299,33 @@ void MusicTimerCallback (void)
 //        case MUSIC_FAULT:
         case MUSIC_FIRE:
         {
-            if (music_cnt  == 1)
-            {
-                music_cnt = 2;
-                MUSIC_On();
-            }
-            else
+            if (music_cnt == 2)
             {
                 music_cnt = 0;
+                MUSIC_On();
+            }
+            else if(music_cnt == 1)
+            {
                 MUSIC_Off();
             }
+
         }
         break;
         case MUSIC_FAULT:
         {
-            if (music_cnt == 8)
+            if (music_cnt == 9)
             {
                 music_cnt = 0;
                 MUSIC_On();
             }
             else if(music_cnt == 2)
             {
-
                 MUSIC_Off();
             }
         }
         break;
         case MUSIC_NONE:
             MUSIC_Off();
-
             break;
         default:
             break;

@@ -34,6 +34,8 @@
  
 #define KEY_1 0x31
 #define KEY_2 0x32
+#define KEY_3 0x33
+
 
 
  //ÉùÒô¹¦ÄÜÑ¡Ôñ

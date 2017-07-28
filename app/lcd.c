@@ -31,7 +31,7 @@ const uint8_t LCD_CHAR[] =
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /*0x00-0x0F*/
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /*0x10-0x1F*/
     /* space !    "    #    $    %    &    ￡    (    )   *    +    ,    -    .    /    */
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x80, 0x00, /*0x20-0x2F*/
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x40, 0x80, 0x00, /*0x20-0x2F*/
     /*  0     1   2    3    4    5    6    7    8    9    :    ;    <    =    >    ?    */
     0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7d, 0x07, 0x7f, 0x6f, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, /*0x30-0x3F*/
     /*  @     A    B    C    D    E    F    G    H    I    J    K    L    M    N    O   */
@@ -101,7 +101,7 @@ void LCD_GLASS_Init(void)
     CLK_RTCClockConfig(CLK_RTCCLKSource_HSI, CLK_RTCCLKDiv_64);
 
     /* Initialize the LCD */
-    LCD_Init(LCD_Prescaler_8, LCD_Divider_16, LCD_Duty_1_4,
+    LCD_Init(LCD_Prescaler_16, LCD_Divider_16, LCD_Duty_1_4,
              LCD_Bias_1_3, LCD_VoltageSource_Internal);
 
     /* Mask register*/
@@ -109,9 +109,9 @@ void LCD_GLASS_Init(void)
     LCD_PortMaskConfig(LCD_PortMaskRegister_1, 0x07);//SEG8~SEG10
 
     LCD_ContrastConfig(LCD_Contrast_Level_7); //配置LCD的对比度0---7
-    LCD_DeadTimeConfig(LCD_DeadTime_1);              // 配置LCD液晶的死区时间0--7
+    LCD_DeadTimeConfig(LCD_DeadTime_0);              // 配置LCD液晶的死区时间0--7
     //decrease power consumption
-    LCD_PulseOnDurationConfig(LCD_PulseOnDuration_5);
+    LCD_PulseOnDurationConfig(LCD_PulseOnDuration_4);//配置LCD脉冲持续时间0--7
 
     LCD_Cmd(ENABLE); /*!< Enable LCD peripheral */
 
@@ -241,13 +241,189 @@ void LCD_PrintfSpecialChar(unsigned char Pos, unsigned char PixelOnoff)
         break;
         case SPECIALCHAR_SINGAL:
         {
-            LCD_SetPixel(3, 10, PixelOnoff);
+            if(GprsInfo.Status.Status_bit.AT_CPIN_Flag == TRUE)
+            {
+                LCD_SetPixel(3, 10, PIXEL_ON);
+                if(GprsInfo.AT_CSQ_Data == 0)
+                {
+                    LCD_SetPixel(2, 10, PIXEL_OFF);
+                    LCD_SetPixel(0, 9, PIXEL_OFF);
+                    LCD_SetPixel(1, 9, PIXEL_OFF);
+                    LCD_SetPixel(2, 9, PIXEL_OFF);
+                    LCD_SetPixel(3, 9, PIXEL_OFF);
+                }
+                else if(GprsInfo.AT_CSQ_Data > 100 && GprsInfo.AT_CSQ_Data <= 113)
+                {
+                    LCD_SetPixel(2, 10, PIXEL_ON);
+                    LCD_SetPixel(0, 9, PIXEL_OFF);
+                    LCD_SetPixel(1, 9, PIXEL_OFF);
+                    LCD_SetPixel(2, 9, PIXEL_OFF);
+                    LCD_SetPixel(3, 9, PIXEL_OFF);
+                }
+                else if(GprsInfo.AT_CSQ_Data > 88 && GprsInfo.AT_CSQ_Data <= 100)
+                {
+                    LCD_SetPixel(2, 10, PIXEL_ON);
+                    LCD_SetPixel(0, 9, PIXEL_ON);
+                    LCD_SetPixel(1, 9, PIXEL_OFF);
+                    LCD_SetPixel(2, 9, PIXEL_OFF);
+                    LCD_SetPixel(3, 9, PIXEL_OFF);
+                }
+                else if(GprsInfo.AT_CSQ_Data > 76 && GprsInfo.AT_CSQ_Data <= 88)
+                {
+                    LCD_SetPixel(2, 10, PIXEL_ON);
+                    LCD_SetPixel(0, 9, PIXEL_ON);
+                    LCD_SetPixel(1, 9, PIXEL_ON);
+                    LCD_SetPixel(2, 9, PIXEL_OFF);
+                    LCD_SetPixel(3, 9, PIXEL_OFF);
+                }
+                else if(GprsInfo.AT_CSQ_Data > 64 && GprsInfo.AT_CSQ_Data <= 76)
+                {
+                    LCD_SetPixel(2, 10, PIXEL_ON);
+                    LCD_SetPixel(0, 9, PIXEL_ON);
+                    LCD_SetPixel(1, 9, PIXEL_ON);
+                    LCD_SetPixel(2, 9, PIXEL_ON);
+                    LCD_SetPixel(3, 9, PIXEL_OFF);
+                }
+                else if(GprsInfo.AT_CSQ_Data >= 51 && GprsInfo.AT_CSQ_Data <= 64)
+                {
+                    LCD_SetPixel(2, 10, PIXEL_ON);
+                    LCD_SetPixel(0, 9, PIXEL_ON);
+                    LCD_SetPixel(1, 9, PIXEL_ON);
+                    LCD_SetPixel(2, 9, PIXEL_ON);
+                    LCD_SetPixel(3, 9, PIXEL_ON);
+                }
+            }
+            else
+            {
+                LCD_SetPixel(3, 10, PIXEL_OFF);
+                GprsInfo.AT_CSQ_Data = 0;
+
+                LCD_SetPixel(2, 10, PIXEL_OFF);
+                LCD_SetPixel(0, 9, PIXEL_OFF);
+                LCD_SetPixel(1, 9, PIXEL_OFF);
+                LCD_SetPixel(2, 9, PIXEL_OFF);
+                LCD_SetPixel(3, 9, PIXEL_OFF);
+            }
         }
         break;
         default:
             break;
     }
 
+}
+
+void LCD_BlinkDisop(void)//闪烁
+{
+    char BitChar[6] = {'\0', '\0', '\0', '\0', '\0'};
+    static uint8_t BlinkMark = 0;
+
+    if(BlinkFlag == 0)
+    {
+        return;
+    }
+    if(CurrentWindow == Window_AddressSet)
+    {
+        BitChar[0] = BitRam[0];
+        BitChar[1] = BitRam[1];
+        BitChar[2] = BitRam[2];
+        BitChar[3] = BitRam[3];
+        if(BlinkMark == 1)
+        {
+            BlinkMark = 0;
+            BitChar[OptionBit] = ' ';
+        }
+        else
+        {
+            BlinkMark = 1;
+        }
+        LCD_Printf(BitChar);
+    }
+    else if((CurrentWindow == Window_ChannelSet) && (IntoEdit == 1))
+    {
+        BitChar[0] = BitRam[0];
+        BitChar[1] = BitRam[1];
+        BitChar[2] = BitRam[2];
+        BitChar[3] = BitRam[3];
+        BitChar[4] = BitRam[4];
+        if(BlinkMark == 1)
+        {
+            BlinkMark = 0;
+            BitChar[OptionBit] = '-';
+        }
+        else
+        {
+            BlinkMark = 1;
+        }
+        LCD_Printf(BitChar);
+    }
+
+}
+void LCD_AdressDisp(void)
+{
+    LCD_PrintfSpecialChar(SPECIALCHAR_A, PIXEL_ON);//关闭通道单位显示
+    LCD_PrintfSpecialChar(SPECIALCHAR_SINGAL, PIXEL_ON);//显示信号状态
+    BitRam[0] = (ParameterBuffer.ParameterConfig.PackageHead_From / 1000) + '0';
+    BitRam[1] = (ParameterBuffer.ParameterConfig.PackageHead_From % 1000 / 100) + '0';
+    BitRam[2] = (ParameterBuffer.ParameterConfig.PackageHead_From % 100 / 10) + '0';
+    BitRam[3] = (ParameterBuffer.ParameterConfig.PackageHead_From % 10) + '0';
+//    LCD_BlinkConfig(LCD_BlinkMode_AllSEG_AllCOM,LCD_BlinkFrequency_Div512);
+    BitRam[4] = '\0';
+    LCD_Printf(BitRam);
+}
+void LCD_ChannelSetDisp(uint8_t Ch)
+{
+    char BitChar[8] = {'\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'};
+    uint8_t Fun;
+    uint16_t RealData;
+
+    Fun = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] >> 12);
+    RealData = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] & 0x0FFF);
+    BitChar[0] = (Ch + 1 + '0');
+    BitChar[1] = '.';
+    BitChar[2] = RealData / 100 + '0';
+    BitChar[3] = (RealData % 100) / 10 + '0';
+    BitChar[4] = (RealData % 10) + '0';
+
+    LCD_PrintfSpecialChar(Fun, PIXEL_ON); //显示通道单位
+    LCD_PrintfSpecialChar(SPECIALCHAR_SINGAL, PIXEL_ON);//显示信号状态
+    BitRam[0] = BitChar[0];
+    BitRam[1] = BitChar[1];
+    BitRam[2] = BitChar[2];
+    BitRam[3] = BitChar[3];
+    BitRam[4] = BitChar[4];
+    BitRam[5] = '\0';
+    LCD_Printf(BitChar);
+}
+void LCD_MenuDisp(uint8_t MenuIndex)
+{
+    char BitChar[8] = {'\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'};
+    LCD_PrintfSpecialChar(SPECIALCHAR_A, PIXEL_ON);//关闭通道单位显示
+    LCD_PrintfSpecialChar(SPECIALCHAR_SINGAL, PIXEL_ON);//显示信号状态
+    switch(MenuIndex)
+    {
+        case 0:
+            BitChar[0] = (MenuIndex + 1 + '0');
+            BitChar[1] = '.';
+            BitChar[2] = 'A';
+            BitChar[3] = 'D';
+            BitChar[4] = 'R';
+            break;
+        case 1:
+            BitChar[0] = (MenuIndex + 1 + '0');
+            BitChar[1] = '.';
+            BitChar[2] = 'S';
+            BitChar[3] = 'E';
+            BitChar[4] = 'T';
+            break;
+        case 2:
+            BitChar[0] = (MenuIndex + 1 + '0');
+            BitChar[1] = '.';
+            BitChar[2] = 'C';
+            BitChar[3] = 'H';
+            BitChar[4] = 'E';
+            break;
+    }
+    LCD_Printf(BitChar);
 }
 //显示通道数据(包括阈值和实时数据)
 //#define CHANNEL_TYPE_LEAKAGE    0x1000

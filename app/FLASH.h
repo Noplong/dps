@@ -45,7 +45,8 @@ typedef struct
     unsigned char InputCheck[3];//输入检测:[0]有源输入1  [1]有源输入2 [2]无源输入3
 
     uint16_t ChannelValue[CHANNEL_NUM]; //通道数据
-    uint16_t ChannelState[CHANNEL_NUM]; //通道状态
+    uint8_t ChannelState[CHANNEL_NUM]; //通道状态
+    uint16_t ChannelEvent[CHANNEL_NUM];//通道事件
 } PARAMETER_STATUS;
 FLASH_PUBLIC PARAMETER_STATUS ParameterSysStatus;
 
@@ -54,7 +55,7 @@ FLASH_PUBLIC PARAMETER_STATUS ParameterSysStatus;
 
 
 //软件版本
-#define CURRENT_VERSION   02
+#define CURRENT_VERSION   01
 
 
 #define MUSIC_MUTE          0x01
@@ -65,11 +66,11 @@ FLASH_PUBLIC PARAMETER_STATUS ParameterSysStatus;
 
 typedef struct
 {
-    unsigned char Adress;                       //1BYTES  系统地址
     unsigned char Music;                        //音响模式
     
     uint16_t PackageHead_From;//数据包头_源地址
     uint16_t PackageHead_To;//数据包头_目的地址
+    uint8_t ConnectIP[23];//通讯主站IP及端口
 
     uint16_t ChannelRatioIn[3];//电流通道变比 ChannelRatioIn[] 比 ChannelRatioOut
     unsigned char ChannelRatioOut[3];

@@ -144,8 +144,11 @@ static void SysInit_Task (uint32_t param)
     BackLight(LED_ON);
     while (1)
     {
-        test_status = atomQueueGet(&Queue_Lcd, 500, &msg);
+        test_status = atomQueueGet(&Queue_Lcd, 300, &msg);
+        HeartBeat_Timer();
         MusicTimerCallback();
+        LCD_BlinkDisop();
+        LCD_PrintfSpecialChar(SPECIALCHAR_SINGAL, PIXEL_ON);
         if(test_status == ATOM_TIMEOUT)
         {
             msg = WM_TIMER;

@@ -231,15 +231,15 @@ static void ADCTask(uint32_t param)
         status = atomSemGet(&Sem_Adc, 1000);//µÈ´ý1S
         if(status == ATOM_TIMEOUT)
         {
-            atomSemResetCount(&Sem_Adc,0);
+            atomSemResetCount(&Sem_Adc, 0);
             ADC_TimerStop();
             DMA_ClearITPendingBit(DMA1_IT_TC0);
             TIM3_ClearFlag(TIM3_FLAG_Update);
-            ADC_TimerStart();     
-            continue;           
+            ADC_TimerStart();
+            continue;
         }
 //        GPIO_ResetBits(GPIOB, GPIO_Pin_1);
-        atomSemResetCount(&Sem_Adc,0);
+        atomSemResetCount(&Sem_Adc, 0);
 
         if(AdcState.InChange == ADC_CHANGE_START)
         {
@@ -552,17 +552,43 @@ static void AdcFunChange(void)
 }
 static void EventProcess(uint8_t Channel, uint8_t Event)
 {
+    uint16_t ChannelType;
+    ChannelType = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel]&0xF000);
     switch(Event)
     {
         case CHANNEL_NORMAL:
             if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_OPEN) == CHANNEL_OPEN)
             {
                 ParameterSysStatus.ChannelState[Channel] &= ~(CHANNEL_OPEN);
+                if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 139;
+                }
+                else if(ChannelType == CHANNEL_TYPE_TEMP)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 135;
+                }
+                else if(ChannelType == CHANNEL_TYPE_CURRENT)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 139;
+                }
                 ParameterSysStatus.FaultCount --;
             }
             else if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_SHORT) == CHANNEL_SHORT)
             {
                 ParameterSysStatus.ChannelState[Channel] &= ~(CHANNEL_SHORT);
+                if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 137;
+                }
+                else if(ChannelType == CHANNEL_TYPE_TEMP)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 133;
+                }
+                else if(ChannelType == CHANNEL_TYPE_CURRENT)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 137;
+                }
                 ParameterSysStatus.FaultCount --;
             }
             if(ParameterSysStatus.FaultCount == 0)
@@ -578,6 +604,18 @@ static void EventProcess(uint8_t Channel, uint8_t Event)
             if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_ALARM) != CHANNEL_ALARM)
             {
                 ParameterSysStatus.ChannelState[Channel] = CHANNEL_ALARM;
+                if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 143;
+                }
+                else if(ChannelType == CHANNEL_TYPE_TEMP)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 144;
+                }
+                else if(ChannelType == CHANNEL_TYPE_CURRENT)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 145;
+                }
                 ParameterSysStatus.AlarmCount++;
                 LedCtrl(LED_ALARM, LED_ON);
                 MUSIC_Set(MUSIC_FIRE);
@@ -594,11 +632,35 @@ static void EventProcess(uint8_t Channel, uint8_t Event)
                 ParameterSysStatus.FaultCount++;
                 if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_SHORT) == CHANNEL_SHORT)
                 {
+                    if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+                    {
+                        ParameterSysStatus.ChannelEvent[Channel] = (137 << 8);
+                    }
+                    else if(ChannelType == CHANNEL_TYPE_TEMP)
+                    {
+                        ParameterSysStatus.ChannelEvent[Channel] = (133 << 8);
+                    }
+                    else if(ChannelType == CHANNEL_TYPE_CURRENT)
+                    {
+                        ParameterSysStatus.ChannelEvent[Channel] = (137 << 8);
+                    }
                     ParameterSysStatus.FaultCount--;
+                }
+                if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 138;
+                }
+                else if(ChannelType == CHANNEL_TYPE_TEMP)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 134;
+                }
+                else if(ChannelType == CHANNEL_TYPE_CURRENT)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 138;
                 }
                 ParameterSysStatus.ChannelState[Channel] = CHANNEL_OPEN;
                 LedCtrl(LED_FAULT, LED_ON);
-                    MUSIC_Set(MUSIC_FAULT);
+                MUSIC_Set(MUSIC_FAULT);
             }
 
             break;
@@ -608,11 +670,35 @@ static void EventProcess(uint8_t Channel, uint8_t Event)
                 ParameterSysStatus.FaultCount++;
                 if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_OPEN) == CHANNEL_OPEN)
                 {
+                    if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+                    {
+                        ParameterSysStatus.ChannelEvent[Channel] = (139 << 8);
+                    }
+                    else if(ChannelType == CHANNEL_TYPE_TEMP)
+                    {
+                        ParameterSysStatus.ChannelEvent[Channel] = (135 << 8);
+                    }
+                    else if(ChannelType == CHANNEL_TYPE_CURRENT)
+                    {
+                        ParameterSysStatus.ChannelEvent[Channel] = (139 << 8);
+                    }
                     ParameterSysStatus.FaultCount--;
+                }
+                if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 136;
+                }
+                else if(ChannelType == CHANNEL_TYPE_TEMP)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 132;
+                }
+                else if(ChannelType == CHANNEL_TYPE_CURRENT)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 136;
                 }
                 ParameterSysStatus.ChannelState[Channel] = CHANNEL_SHORT;
                 LedCtrl(LED_FAULT, LED_ON);
-                    MUSIC_Set(MUSIC_FAULT);
+                MUSIC_Set(MUSIC_FAULT);
             }
             break;
         default:

@@ -15,6 +15,9 @@
 #include "atommutex.h"
 #include "atomsem.h"
 #include "atomqueue.h"
+#include "string.h"
+
+
 
 #define GON_OFF_PIN    GPIO_Pin_7
 #define GON_OFF_GPIO   GPIOG
@@ -24,12 +27,16 @@
 #define GPON_OFF_GPIO   GPIOF
 
 
-static uint8_t RecvCount = 0;
-uint8_t ReadDataFlag = 0x00;
+static uint16_t RecvCount = 0;
+uint8_t AT_Answer = 0x00;//AT命令的回复
 
 static ATOM_SEM Sem_Gprs;
 
 #define QUEUE_USART       10
+
+static uint8_t TrueString[5];
+static uint8_t FALSEString[5];
+
 
 static ATOM_QUEUE Queue_Gprs;
 static uint8_t QueueGprsStorage[QUEUE_USART];
@@ -37,7 +44,13 @@ static uint8_t QueueGprsStorage[QUEUE_USART];
 static ATOM_TCB GprsUsartTask_Tcb;
 NEAR static uint8_t GprsUsartTask_stack[GPRS_USART_TASK_SIZE_BYTES];
 static void GprsUsartTask(uint32_t param);
+static void SendHeartBeat(void);
+static void ConnectFailProcess(void);
+static void Gprs_ReStart(void);
+
 void PrintString(uint8_t *pStr, uint8_t len);
+void AnswerServer(uint8_t BufNum);
+uint8_t PacketPreprocess(uint8_t *pStr, uint8_t Length, uint8_t PackOrUnpack);
 
 
 void Gprs_Init(void)
@@ -48,7 +61,7 @@ void Gprs_Init(void)
     USART_DeInit(USART3);
 
     /* USART configuration */
-    USART_Init(USART3, 9600,
+    USART_Init(USART3, 38400,
                USART_WordLength_8b,
                USART_StopBits_1,
                USART_Parity_No,
@@ -57,6 +70,10 @@ void Gprs_Init(void)
     GPIO_Init(GON_OFF_GPIO, GON_OFF_PIN, GPIO_Mode_Out_PP_High_Fast);
 
     GPIO_Init(GPON_OFF_GPIO, GPON_OFF_PIN, GPIO_Mode_Out_PP_High_Fast);
+
+    //DCD管脚
+    GPIO_Init(GPRS_DCD_PORT, GPRS_DCD_PIN, GPIO_Mode_In_FL_No_IT);
+
     GPIO_SetBits(GPON_OFF_GPIO, GPON_OFF_PIN);//关GPRS模块电源
 
     if (atomSemCreate (&Sem_Gprs, 0) != ATOM_OK)
@@ -69,6 +86,14 @@ void Gprs_Init(void)
     {
         return;
     }
+
+//    //打开模块供电
+    GPIO_ResetBits(GPON_OFF_GPIO, GPON_OFF_PIN);
+    GPIO_SetBits(GON_OFF_GPIO, GON_OFF_PIN);
+    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+    GPIO_ResetBits(GON_OFF_GPIO, GON_OFF_PIN);
+    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+
     status = atomThreadCreate(&GprsUsartTask_Tcb,
                               GPRS_USART_TASK_PRIO, GprsUsartTask, 0,
                               &GprsUsartTask_stack[GPRS_USART_TASK_SIZE_BYTES - 1],
@@ -79,260 +104,510 @@ void Gprs_Init(void)
         printf ("GPRSTask start fail\n");
 #endif
     }
-
-    USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
-    USART_Cmd(USART3, DISABLE);
-
-//    //打开模块供电,关复位脚
-    GPIO_ResetBits(GPON_OFF_GPIO, GPON_OFF_PIN);
-    GPIO_SetBits(GON_OFF_GPIO, GON_OFF_PIN);
-    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 15);
-    GPIO_ResetBits(GON_OFF_GPIO, GON_OFF_PIN);
-    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 30);
+    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
+    USART_Cmd(USART3, ENABLE);
 
 //    ConnectToServer();
+    GprsInfo.Status.Status_u8 = 0x00;
+//    memset(GprsRxBuf[0].DataBufferChar,sizeof(DATA_FORMAT));
+//    memset(GprsRxBuf[1].DataBufferChar,sizeof(DATA_FORMAT));
+//    memset(GprsTxBuf.DataBufferChar,sizeof(GprsTxBuf.DataBufferChar));
+    GprsInfo.CommandCount = DATAPACKAGE_STARTING;
 
 }
+static void ReceiveReset(void)
+{
+    USART_ClearITPendingBit(USART3, USART_IT_RXNE);
+    RecvCount = 0;
+    AT_Answer = 1;
+    memset(&(GprsRxBuf[0].DataBufferChar[0]), 0, BUF_SIZE);
+    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
+}
+static uint8_t* SendATCommand(uint8_t *cmd, uint8_t *ack, uint8_t Timeout)
+{
+    uint8_t* pString = NULL;
+    ReceiveReset();
+    //atomSemResetCount(&Sem_Gprs,0);
+    PrintString(cmd, 0);
+    atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * Timeout);
+    USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
+
+    GprsRxBuf[0].DataBufferChar[RecvCount] = '\0';//添加结束符
+    pString = strstr(&GprsRxBuf[0].DataBufferChar[0], ack);
+    return pString;
+}
+
 static void GprsUsartTask(uint32_t param)
 {
     uint8_t msg, status;
     uint8_t Commmand;
+    uint8_t *pMatchString = NULL;
 
     while(1)
     {
-        status = atomQueueGet(&Queue_Gprs, 0, &msg);
-//        if(status == ATOM_OK)
-//        {
-//            Commmand = msg;
-          
-//            switch(Commmand)
-//            {
-//                case AT_ATE:
-//                    PrintString("ATE0\r\n", 0);
-//                    //等待1.5s
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("ATE0\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    break;
-//                case AT_CPIN:
-//                    PrintString("AT+CPIN?\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+CPIN?\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
+        status = atomQueueGet(&Queue_Gprs, 3500, &msg);
+        if(status == ATOM_OK)
+        {
+            Commmand = msg;
+            switch(Commmand)
+            {
+                case GPRS_COMMAND_PREPARE://网络连接准备
+                    pMatchString = SendATCommand("AT+IPR=38400\r\n", "OK", 4); //波特率同步
+                    if(pMatchString == NULL)
+                    {
+                        pMatchString = SendATCommand("AT+IPR=38400\r\n", "OK", 4); //波特率同步
+                    }
+                    if(pMatchString == NULL)
+                    {
+                        Gprs_ReStart();
+                        GprsInfo.Status.Status_bit.GPRS_AbleToUse = FALSE;
+                    }
+                    else
+                    {
+                        GprsInfo.Status.Status_bit.GPRS_AbleToUse = TRUE;
+                        GprsInfo.CommandCount &=  0x0FFF;
+                        GprsInfo.CommandCount |= DATAPACKAGE_WAIT_CONNECT;
+                        SendATCommand("ATE0\r\n", "OK", 2);
+                    }
+                    break;
+                case GPRS_COMMAND_SINGAL://SIM卡有无及信号强度
+                    if(GPIO_ReadInputDataBit(GPRS_DCD_PORT, GPRS_DCD_PIN) == GPRS_DCD_PIN)
+                    {
+//                        pMatchString = SendATCommand("AT+CIPSTATUS\r\n", "+CPIN: READY", 2);
+//                        if(pMatchString)
+                        pMatchString = SendATCommand("AT+CPIN?\r\n", "+CPIN: READY", 2);
+                        if(pMatchString != NULL)
+                        {
+                            GprsInfo.Status.Status_bit.AT_CPIN_Flag = TRUE;
+                            pMatchString = SendATCommand("AT+CSQ\r\n", "+CSQ:", 2);
+                            status = ((*(pMatchString + 6) - 0x30) * 10) + (*(pMatchString + 7) - 0x30);
 
-//                    }
-//                    break;
-//                case AT_CSQ:
-//                    PrintString("AT+CSQ\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+CSQ\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
+                            if(status == 99)//无信号
+                            {
+                                GprsInfo.AT_CSQ_Data = 0;
+                            }
+                            else
+                            {
+                                GprsInfo.AT_CSQ_Data = 113 - (status * 2); //实际dbm
+                            }
+                        }
+                        else
+                        {
+                            pMatchString = SendATCommand("AT+CPIN?\r\n", "ERROR", 2);
+                            if(pMatchString != NULL)
+                            {
+                                Gprs_ReStart();
+                            }
+                            GprsInfo.Status.Status_bit.AT_CPIN_Flag = FALSE;
+                            GprsInfo.AT_CSQ_Data = 0;
+                            GprsInfo.Status.Status_bit.GPRS_AbleToUse = FALSE;
+                            GprsInfo.CommandCount &=  0x0FFF;
+                            GprsInfo.CommandCount |= DATAPACKAGE_STARTING;
 
-//                    }
-//                    break;
-//                case AT_CGATT:
-//                    PrintString("AT+CGATT=1\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+CGATT=1\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
+                        }
+                    }
+                    else
+                    {
+                        GprsInfo.Status.Status_bit.AT_CPIN_Flag = TRUE;
+                        GprsInfo.Status.Status_bit.AT_CGATT_Flag = TRUE;
+                        GprsInfo.Status.Status_bit.ServerContectState = TRUE;
+                        GprsInfo.CommandCount = DATAPACKAGE_READY_TO_SEND;
+                    }
+                    break;
+                case GPRS_COMMAND_CGATT://GPRS附着状态
+                    pMatchString = SendATCommand("AT+CGATT?\r\n", "+CGATT:", 2);
+                    if(pMatchString != NULL)
+                    {
+                        status = (*(pMatchString + 8) - 0x30);
+                        if(status == 0)
+                        {
+                            pMatchString = SendATCommand("AT+CGATT=1\r\n", "+CGATT: 1", 2);
+                            if(pMatchString != NULL)
+                            {
+                                GprsInfo.Status.Status_bit.AT_CGATT_Flag = TRUE;
+                            }
+                            else
+                            {
+                                Gprs_ReStart();
 
-//                    }
-//                    break;
-//                case AT_CIPMUX:
-//                    PrintString("AT+CIPMUX=0\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+CIPMUX=0\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
+                                GprsInfo.Status.Status_bit.GPRS_AbleToUse = FALSE;
+                                GprsInfo.Status.Status_bit.AT_CPIN_Flag = FALSE;
+                                GprsInfo.Status.Status_bit.AT_CGATT_Flag = FALSE;
+                            }
+                        }
+                        else
+                        {
+                            GprsInfo.Status.Status_bit.AT_CGATT_Flag = TRUE;
+                        }
+                    }
+                    else
+                    {
+                        GprsInfo.Status.Status_bit.AT_CPIN_Flag = FALSE;
+                    }
+                    break;
+                case GPRS_COMMAND_CONNECT_IP://使用IP建立连接
+                    pMatchString = SendATCommand("AT+CIPMUX=0\r\n", "OK", 2);
+                    pMatchString = SendATCommand("AT+CIPMODE=1\r\n", "OK", 2);
+                    pMatchString = SendATCommand("AT+CSTT=CMNET\r\n", "OK", 5);
 
-//                    }
-//                    break;
-//                case AT_CIPMODE:
-//                    PrintString("AT+CIPMODE=0\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+CIPMODE=0\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
+                    pMatchString = SendATCommand("AT+CIICR\r\n", "OK", 8); //激活场景
+                    pMatchString = SendATCommand("AT+CIFSR\r\n", "ERROR", 10); //获取本地IP
+                    if(pMatchString == NULL)
+                    {
+                        PrintString("AT+CIPSTART=TCP,", 0);
+                        pMatchString = SendATCommand(ParameterBuffer.ParameterConfig.ConnectIP, "CONNECT", 20); //连接服务器
+                        if(pMatchString != NULL || GPIO_ReadInputDataBit(GPRS_DCD_PORT, GPRS_DCD_PIN) != GPRS_DCD_PIN)
+                        {
+//                            PrintString("SEND\r\n", 0);//测试
 
-//                    }
-//                    break;
-//                case AT_CSTT:
-//                    PrintString("AT+CSTT=CMNET\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+CSTT=CMNET\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
+                            RecvCount = 0;
+                            GprsInfo.CommandCount = DATAPACKAGE_READY_TO_SEND;
+                            GprsInfo.Status.Status_bit.ServerContectState = TRUE;
+                        }
+                        else
+                        {
+                            ConnectFailProcess();
+                        }
+                    }
+                    else
+                    {
+                        ConnectFailProcess();
+                    }
+                    break;
+                case GPRS_COMMAND_HEARTBEAT://发送心跳
+                    AT_Answer = 0;
+                    SendHeartBeat();
 
-//                    }
-//                    break;
-//                case AT_CIICR:
-//                    PrintString("AT+CIICR\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+CIICR\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
+                    break;
+                case GPRS_COMMAND_RECVPROCESS://接收包处理
+                    if(GprsRxBuf[0].DataBuff.DataPackage_State == DATA_PACKAGE_READY)
+                    {
+                        status = 0;
+                    }
+                    else if(GprsRxBuf[1].DataBuff.DataPackage_State == DATA_PACKAGE_READY)
+                    {
+                        status = 1;
+                    }
 
-//                    }
-//                    break;
-//                case AT_CIPSTART:
-//                    PrintString("AT+CIPSTART=UDP,", 0);
-//                    PrintString("115.28.103.131,8089\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                    }
-//                    else
-//                    {
+                    if(GprsRxBuf[status].DataBuff.DataPackage_Command == 0x02)//服务器发送命令
+                    {
+                        AnswerServer(status);
+                    }
+                    else if(GprsRxBuf[status].DataBuff.DataPackage_Command == 0x03)//服务器确认命令
+                    {
 
-//                    }
-//                    break;
-//                case AT_CIPSEND:
-//                    PrintString("AT+CIPSEND\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+CIPSEND\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
-//                        for(status = 0; status <= 23; status++)//查找接收的字符中有没有"\r\n> ",有表示可以发送
-//                        {
-//                            if(GprsRxBuf[status] == 0x0D
-//                               && GprsRxBuf[status + 1] == 0x0A
-//                               && GprsRxBuf[status + 2] == 0x3E)
-//                            {
-//                                USART_SendData8(USART3, (ParameterBuffer.ParameterConfig.PackageHead_From >> 8));
-//                                USART_SendData8(USART3, (ParameterBuffer.ParameterConfig.PackageHead_From & 0x00FF));
-//                                USART_SendData8(USART3, (ParameterBuffer.ParameterConfig.PackageHead_To >> 8));
-//                                USART_SendData8(USART3, (ParameterBuffer.ParameterConfig.PackageHead_To & 0x00FF));
-
-                            
-//                                USART_SendData8(USART3, 0x1A);
-//                                break;
-//                            }
-//                        }
-//                    }
-//                    break;
-//                case AT_CIPSRIP:
-//                    PrintString("AT+CIPSRIP=1\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+CIPSRIP=1\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
-
-//                    }
-//                    break;
-//                case AT_IPR:
-//                    PrintString("AT+IPR=9600\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+IPR=9600\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
-
-//                    }
-//                    break;
-//                case AT_CCID:
-//                    PrintString("AT+CCID\r\n", 0);
-//                    status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    if(status == ATOM_TIMEOUT)
-//                    {
-//                        PrintString("AT+CCID\r\n", 0);
-//                        //等待1.5s
-//                        status = atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * 15);
-//                    }
-//                    else
-//                    {
-
-//                    }
-//                    break;
-//            }
-//        }
+                    }
+                    else
+                    {
+                        memset(&(GprsRxBuf[status].DataBufferChar[0]), 0, BUF_SIZE);
+                        GprsRxBuf[status].DataBuff.DataPackage_State = DATA_PACKAGE_EMPTY;
+                    }
+                    break;
+                case GPRS_COMMAND_RECV_TIMEOUT://接收包超时处理
+                    memset(&(GprsRxBuf[0].DataBufferChar[0]), 0, BUF_SIZE);
+                    memset(&(GprsRxBuf[1].DataBufferChar[0]), 0, BUF_SIZE);
+                    GprsRxBuf[0].DataBuff.DataPackage_State = DATA_PACKAGE_EMPTY;
+                    GprsRxBuf[1].DataBuff.DataPackage_State = DATA_PACKAGE_EMPTY;
+                    RecvCount = 0;
+                    break;
+                case GPRS_COMMAND_CCID://读设备CCID
+                    pMatchString = SendATCommand("AT+CCID\r\n", "OK", 2); //CCID
+                    if(pMatchString != NULL)
+                    {
+                        for(status = 0; status < 10; status++)
+                        {
+                            GprsInfo.Sim_Iccid[status] = (((GprsRxBuf[0].DataBufferChar[2 + 2 * status] - 0x30) << 4) | (GprsRxBuf[0].DataBufferChar[3 + 2 * status] - 0x30));
+                        }
+                    }
+                    break;
+            }
+        }
+        else
+        {
+            if((GprsInfo.CommandCount & 0xF000) == DATAPACKAGE_STARTING)//正在启动
+            {
+                if(GprsInfo.Status.Status_bit.GPRS_AbleToUse == FALSE)
+                {
+                    QueueGprsPut(GPRS_COMMAND_PREPARE);
+                }
+            }
+            else if((GprsInfo.CommandCount & 0xF000) == DATAPACKAGE_WAIT_CONNECT)
+            {
+                if(GprsInfo.Status.Status_bit.AT_CPIN_Flag == FALSE)
+                {
+                    QueueGprsPut(GPRS_COMMAND_SINGAL);
+                }
+                else if(GprsInfo.Status.Status_bit.AT_CGATT_Flag == FALSE)
+                {
+                    QueueGprsPut(GPRS_COMMAND_CCID);
+                    QueueGprsPut(GPRS_COMMAND_CGATT);
+                }
+                else if(GprsInfo.Status.Status_bit.ServerContectState == FALSE)
+                {
+                    QueueGprsPut(GPRS_COMMAND_CONNECT_IP);
+                }
+            }
+        }
 //        RecvCount = 0;
 //        memset(GprsRxBuf, 0, sizeof(GprsRxBuf));
 
     }
 }
+
+void AnswerServer(uint8_t BufNum)
+{
+    uint8_t i;
+    GprsTxBuf.DataBuff.DataPackage_Start = 0x7E;
+    GprsTxBuf.DataBuff.DataPackage_MsgID_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgID_L;
+    GprsTxBuf.DataBuff.DataPackage_MsgID_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgID_H;
+    GprsTxBuf.DataBuff.DataPackage_Version_L = GprsRxBuf[BufNum].DataBuff.DataPackage_Version_L;
+    GprsTxBuf.DataBuff.DataPackage_Version_H = GprsRxBuf[BufNum].DataBuff.DataPackage_Version_H;
+
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Low_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_Low_L;
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Low_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_Low_H;
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Mid_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_Mid_L;
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Mid_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_Mid_H;
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_High_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_High_L;
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_High_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_High_H;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_Low_L;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_Low_H;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Mid_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_Mid_L;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Mid_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_Mid_H;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_High_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_High_L;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_High_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_High_H;
+
+    GprsTxBuf.DataBuff.DataPackage_Command = 0x03;//命令字节-确认
+    GprsTxBuf.DataBuff.DataPackage_Data[0] = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[0];//类型标志
+
+    if(GPIO_ReadInputDataBit(GPRS_DCD_PORT, GPRS_DCD_PIN) == GPRS_DCD_PIN)
+    {
+        memset(&(GprsTxBuf.DataBufferChar[0]), 0, BUF_SIZE);
+        ConnectFailProcess();
+        return;
+    }
+
+
+    switch(GprsRxBuf[BufNum].DataBuff.DataPackage_Data[0])
+    {
+        case SERVER_COMMAND_SIM_ICCID:
+            GprsTxBuf.DataBuff.DataPackage_DataLength_L = 22;//数据长度
+            GprsTxBuf.DataBuff.DataPackage_DataLength_H = 0x00;//数据长度
+
+            //信息体数目
+            GprsTxBuf.DataBuff.DataPackage_Data[1] = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[1];
+            for(i = 0; i < 20; i++)
+            {
+                if(i < 10)
+                {
+                    GprsTxBuf.DataBuff.DataPackage_Data[2 + i] = GprsInfo.Sim_Iccid[i];
+                }
+                else
+                {
+                    GprsTxBuf.DataBuff.DataPackage_Data[2 + i] = 0x00;
+                }
+            }
+            i = PacketPreprocess(&GprsTxBuf.DataBufferChar[1], 41, 0);//[0]为起始符
+            PrintString(GprsTxBuf.DataBufferChar, i + 1);
+            USART_SendData8(USART3, 0x7E);
+            break;
+        case SERVER_COMMAND_DEVICE_CONFIG:
+
+            break;
+        case SERVER_COMMAND_DEVICE_RESET:
+        case SERVER_COMMAND_DEVICE_MUTE:
+            GprsTxBuf.DataBuff.DataPackage_DataLength_L = 2;//数据长度
+            GprsTxBuf.DataBuff.DataPackage_DataLength_H = 0x00;//数据长度
+
+            //信息体数目
+            GprsTxBuf.DataBuff.DataPackage_Data[1] = 0;//类型标志
+            i = PacketPreprocess(&GprsTxBuf.DataBufferChar[1], 21, 0);//[0]为起始符
+            PrintString(GprsTxBuf.DataBufferChar, i + 1);
+            USART_SendData8(USART3, 0x7E);
+            break;
+        default:
+            break;
+    }
+    memset(&(GprsTxBuf.DataBufferChar[0]), 0, BUF_SIZE);
+
+
+}
+void HeartBeat_Timer(void)
+{
+    GprsInfo.HeartBeat ++;
+    if(GprsInfo.HeartBeat >= 200)//秒
+    {
+        GprsInfo.HeartBeat = 0;
+        QueueGprsPut(GPRS_COMMAND_HEARTBEAT);
+    }
+}
+static void Gprs_ReStart(void)
+{
+    GPIO_SetBits(GPON_OFF_GPIO, GPON_OFF_PIN);
+    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+    GPIO_ResetBits(GPON_OFF_GPIO, GPON_OFF_PIN);
+    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+    GPIO_SetBits(GON_OFF_GPIO, GON_OFF_PIN);
+    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+    GPIO_ResetBits(GON_OFF_GPIO, GON_OFF_PIN);
+    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+}
+static void ConnectFailProcess(void)
+{
+    uint8_t *pMatchString = NULL;
+    GprsInfo.Status.Status_bit.AT_CPIN_Flag = FALSE;
+    GprsInfo.Status.Status_bit.AT_CSTT_Flag = FALSE;
+    GprsInfo.Status.Status_bit.ServerContectState = FALSE;
+    if(GprsInfo.CommandCount != DATAPACKAGE_STARTING)
+    {
+        pMatchString = SendATCommand("AT+CIPSTATUS\r\n", "PDP DEACT", 3);
+        if(pMatchString != NULL)
+        {
+            GPIO_SetBits(GPON_OFF_GPIO, GPON_OFF_PIN);
+            atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+            GPIO_ResetBits(GPON_OFF_GPIO, GPON_OFF_PIN);
+            GPIO_SetBits(GON_OFF_GPIO, GON_OFF_PIN);
+            atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+            GPIO_ResetBits(GON_OFF_GPIO, GON_OFF_PIN);
+            atomTimerDelay(SYSTEM_TICKS_PER_SEC * 30);
+            GprsInfo.CommandCount = DATAPACKAGE_STARTING;
+
+        }
+        SendATCommand("AT+CIPSHUT\r\n", "OK", 1);
+        GprsInfo.CommandCount = DATAPACKAGE_WAIT_CONNECT;
+    }
+}
+
+static void SendHeartBeat(void)
+{
+    uint8_t Ch, j, UsedChannel = 0;
+    uint16_t ChannelType;
+    uint16_t AlarmValue;
+    //判断是否还处在透传模式，不是则DATAPACKAGE_WAIT_CONNECT
+    if(((GprsInfo.CommandCount & 0xF000) == DATAPACKAGE_WAIT_CONNECT)
+       || ((GprsInfo.CommandCount & 0xF000) == DATAPACKAGE_STARTING))
+    {
+        return;//服务器未连接，不上传心跳包
+    }
+
+    if(GPIO_ReadInputDataBit(GPRS_DCD_PORT, GPRS_DCD_PIN) == GPRS_DCD_PIN)
+    {
+        ConnectFailProcess();
+    }
+
+
+    memset(&(GprsTxBuf.DataBufferChar[0]), 0, BUF_SIZE);
+    GprsTxBuf.DataBuff.DataPackage_Start = 0x7E;
+    GprsTxBuf.DataBuff.DataPackage_MsgID_L = GprsInfo.CommandCount;
+    GprsTxBuf.DataBuff.DataPackage_MsgID_H = (GprsInfo.CommandCount >> 8);
+    GprsInfo.CommandCount++;
+    GprsTxBuf.DataBuff.DataPackage_Version_L = 0x02;
+    GprsTxBuf.DataBuff.DataPackage_Version_H = CURRENT_VERSION;
+
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Low_L =  ParameterBuffer.ParameterConfig.PackageHead_From;
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Low_H =  (ParameterBuffer.ParameterConfig.PackageHead_From >> 8);
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Mid_L = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Mid_H = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_High_L = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgFrom_High_H = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_L = ParameterBuffer.ParameterConfig.PackageHead_To;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_H = (ParameterBuffer.ParameterConfig.PackageHead_To >> 8);
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Mid_L = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Mid_H = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_High_L = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_High_H = 0x00;
+
+    GprsTxBuf.DataBuff.DataPackage_Command = 0x02;//命令字节-发送
+    GprsTxBuf.DataBuff.DataPackage_Data[0] = 65;//类型标志-上传设备状态
+    j = 2;
+    for(Ch = 0; Ch < CHANNEL_NUM; Ch++)
+    {
+        ChannelType = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] & 0xF000);
+        AlarmValue  = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] & 0x0FFF);
+        if(AlarmValue != 0)//通道在线
+        {
+//            //测试
+//            ParameterSysStatus.ChannelEvent[Ch] = 500;
+//            AlarmValue = 200;           
+            UsedChannel ++;
+            if((ParameterSysStatus.ChannelEvent[Ch] & 0xFF00) != 0)//开路转短路或短路转开路-需先报恢复
+            {
+                UsedChannel++;
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = SYSTEM_TYPE;//系统类型
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = DEVICE_TYPE_12_CHANNEL;//设备类型
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-控制器号
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-回路号
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-地址号
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = Ch + 1; //设备地址-通道号
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelEvent[Ch] >> 8); //设备状态
+                if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+                {
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 15;//设备参量-参量类型
+                    //实时数据
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
+                }
+                else if(ChannelType == CHANNEL_TYPE_TEMP)
+                {
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 2;//设备参量-参量类型
+                    //实时数据
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch]*10);
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ((ParameterSysStatus.ChannelValue[Ch]*10) >> 8);
+                }
+                else if(ChannelType == CHANNEL_TYPE_CURRENT)
+                {
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 11;//设备参量-参量类型
+                    //实时数据
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch]*10);
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ((ParameterSysStatus.ChannelValue[Ch]*10) >> 8);
+                }
+                //报警阈值
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = AlarmValue;
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue >> 8);
+            }
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = SYSTEM_TYPE;//系统类型
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = DEVICE_TYPE_12_CHANNEL;//设备类型
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-控制器号
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-回路号
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-地址号
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = Ch + 1; //设备地址-通道号
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelEvent[Ch]; //设备状态
+            if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+            {
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 15;//设备参量-参量类型
+            }
+            else if(ChannelType == CHANNEL_TYPE_TEMP)
+            {
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 2;//设备参量-参量类型
+            }
+            else if(ChannelType == CHANNEL_TYPE_CURRENT)
+            {
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 11;//设备参量-参量类型
+            }
+            //实时数据
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
+
+            //报警阈值
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = AlarmValue;
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue >> 8);
+        }
+
+
+    }
+    GprsTxBuf.DataBuff.DataPackage_Data[1] = UsedChannel;//信息对象数目
+
+    GprsTxBuf.DataBuff.DataPackage_DataLength_L = (UsedChannel * 12 + 2); //应用单元数据长度
+    GprsTxBuf.DataBuff.DataPackage_DataLength_H = ((UsedChannel * 12 + 2) >> 8); //应用单元数据长度
+
+    j = PacketPreprocess(&GprsTxBuf.DataBufferChar[1], (UsedChannel * 12 + 2 + 19), 0); //[0]为起始符
+    PrintString(GprsTxBuf.DataBufferChar, j + 1);
+    USART_SendData8(USART3, 0x7E);
+}
+
 void QueueGprsPut(uint8_t command)
 {
     atomQueuePut(&Queue_Gprs, 0, &command);
-}
-void ConnectToServer(void)
-{
-    QueueGprsPut(AT_IPR);//串口波特率同步
-    QueueGprsPut(AT_ATE);//判断是否可以与GPRS模块通讯，并关闭回显
-    QueueGprsPut(AT_CPIN);//检测是否有手机卡接入
-    QueueGprsPut(AT_CSQ);//检查网络信号强度
-    QueueGprsPut(AT_CGATT);//设置附着GPRS
-    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
-
-    QueueGprsPut(AT_CIPMUX);
-    QueueGprsPut(AT_CSTT);
-    QueueGprsPut(AT_CIICR);
-    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 60);
-
-    QueueGprsPut(AT_CIFSR);
-    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 30);
-    QueueGprsPut(AT_CCID);
-
-    QueueGprsPut(AT_CIPSTART);
-    QueueGprsPut(AT_CIPSRIP);
-
-
-
 }
 
 void PrintString(uint8_t *pStr, uint8_t len)
@@ -369,6 +644,7 @@ void PrintString(uint8_t *pStr, uint8_t len)
 
 
 }
+
 INTERRUPT_HANDLER(TIM3_CC_USART3_RX_IRQHandler, 22)
 {
     /* In order to detect unexpected events during development,
@@ -376,7 +652,8 @@ INTERRUPT_HANDLER(TIM3_CC_USART3_RX_IRQHandler, 22)
     */
     uint8_t err;
     uint16_t RecvData = 0;
-
+    static uint8_t RxBufChoose = 0;
+    static uint8_t SpecialCharCount = 0;
     atomIntEnter();
 
     if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET)
@@ -385,38 +662,62 @@ INTERRUPT_HANDLER(TIM3_CC_USART3_RX_IRQHandler, 22)
 
         RecvData = USART_ReceiveData8(USART3);
 
-        GprsRxBuf[RecvCount++] = RecvData;
-        if(RecvCount >= 10 && GprsRxBuf[RecvCount - 1] == '\n')//接收到服务器数据
+
+        if(AT_Answer != 1)//透传模式下
         {
-//            if(GprsRxBuf[RecvCount - 1] == (ParameterBuffer.ParameterConfig.PackageHead_From & 0x00FF)
-//               && GprsRxBuf[RecvCount - 2] == (ParameterBuffer.ParameterConfig.PackageHead_From >> 8)
-//               && GprsRxBuf[RecvCount - 3] == (ParameterBuffer.ParameterConfig.PackageHead_To & 0x00FF)
-//               && GprsRxBuf[RecvCount - 4] == (ParameterBuffer.ParameterConfig.PackageHead_To >> 8))
+            if(RecvData == 0x7E && RecvCount == 0)//接收到起始符
             {
-                ReadDataFlag = 0xFF; //接收的是服务器端命令
-//                if(gSysInfo.Status.Status_bit.UartContectState == UART_STATE_SYSSET)
-//                {
-//                    GprsRxBuf[6] = (ParameterBuffer.gSysConfig.PackageHead_From & 0x00FF);
-//                    GprsRxBuf[5] = (ParameterBuffer.gSysConfig.PackageHead_From >> 8);
-//                    GprsRxBuf[4] = (ParameterBuffer.gSysConfig.PackageHead_To & 0x00FF);
-//                    GprsRxBuf[3] = (ParameterBuffer.gSysConfig.PackageHead_To >> 8);
-//                    GprsRxBuf[2] = 0x06;
-//                    GprsRxBuf[1] = 0xBB;
-//                    GprsRxBuf[0] = 0xAA;
-//                    RecvCount = 7;
-//                }
-//                else
+                if(RecvData == 0x7E && RecvCount == 1)
                 {
                     RecvCount = 0;
-                    atomSemPut(&Sem_Gprs);
                 }
+                if(GprsRxBuf[0].DataBuff.DataPackage_State == DATA_PACKAGE_EMPTY)
+                {
+                    RxBufChoose = 0;
+                    GprsRxBuf[RxBufChoose].DataBuff.DataPackage_State = DATA_PACKAGE_RECEVING;
+                }
+                else if(GprsRxBuf[1].DataBuff.DataPackage_State == DATA_PACKAGE_EMPTY)
+                {
+                    RxBufChoose = 1;
+                    GprsRxBuf[RxBufChoose].DataBuff.DataPackage_State = DATA_PACKAGE_RECEVING;
+                }
+                GprsRxBuf[RxBufChoose].DataBufferChar[RecvCount ++] = RecvData;
+            }
+            //正在接收
+            else if(GprsRxBuf[RxBufChoose].DataBuff.DataPackage_State == DATA_PACKAGE_RECEVING)
+            {
+                if((RecvData == 94 || RecvData == 93) && (GprsRxBuf[RxBufChoose].DataBufferChar[RecvCount - 1] == 125))
+                {
+                    GprsRxBuf[RxBufChoose].DataBufferChar[RecvCount - 1] = (125 + RecvData - 93);
+                }
+                else
+                {
+                    GprsRxBuf[RxBufChoose].DataBufferChar[RecvCount ++] = RecvData;
+                }
+
+                if(RecvData == 0x7E)//结束符
+                {
+                    GprsRxBuf[RxBufChoose].DataBuff.DataPackage_Stop = 0x7E;
+                    GprsRxBuf[RxBufChoose].DataBuff.DataPackage_State = DATA_PACKAGE_READY;
+                    RecvCount = 0;
+                    QueueGprsPut(GPRS_COMMAND_RECVPROCESS);
+
+                }
+            }
+            if(RecvCount >= BUF_SIZE)
+            {
+                QueueGprsPut(GPRS_COMMAND_RECVPROCESS);
+            }
+        }
+        else
+        {
+            GprsRxBuf[0].DataBufferChar[RecvCount++] = RecvData;
+            if(RecvCount >= BUF_SIZE)
+            {
+                RecvCount = 0;
             }
         }
 
-        if(RecvCount >= 250)
-        {
-            RecvCount = 0;
-        }
 
     }
     atomIntExit(TRUE);
@@ -424,6 +725,155 @@ INTERRUPT_HANDLER(TIM3_CC_USART3_RX_IRQHandler, 22)
 //    {
 //        OSTmrStart(GPRSTimer, &err);
 //    }
+}
+static unsigned char auchCRCHi[] =
+{
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41,
+    0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40
+} ;
+
+//Low-Order Byte Table
+/* Table of CRC values for low¤Corder byte */
+static char auchCRCLo[] =
+{
+    0x00, 0xC0, 0xC1, 0x01, 0xC3, 0x03, 0x02, 0xC2,
+    0xC6, 0x06, 0x07, 0xC7, 0x05, 0xC5, 0xC4, 0x04,
+    0xCC, 0x0C, 0x0D, 0xCD, 0x0F, 0xCF, 0xCE, 0x0E,
+    0x0A, 0xCA, 0xCB, 0x0B, 0xC9, 0x09, 0x08, 0xC8,
+    0xD8, 0x18, 0x19, 0xD9, 0x1B, 0xDB, 0xDA, 0x1A,
+    0x1E, 0xDE, 0xDF, 0x1F, 0xDD, 0x1D, 0x1C, 0xDC,
+    0x14, 0xD4, 0xD5, 0x15, 0xD7, 0x17, 0x16, 0xD6,
+    0xD2, 0x12, 0x13, 0xD3, 0x11, 0xD1, 0xD0, 0x10,
+    0xF0, 0x30, 0x31, 0xF1, 0x33, 0xF3, 0xF2, 0x32,
+    0x36, 0xF6, 0xF7, 0x37, 0xF5, 0x35, 0x34, 0xF4,
+    0x3C, 0xFC, 0xFD, 0x3D, 0xFF, 0x3F, 0x3E, 0xFE,
+    0xFA, 0x3A, 0x3B, 0xFB, 0x39, 0xF9, 0xF8, 0x38,
+    0x28, 0xE8, 0xE9, 0x29, 0xEB, 0x2B, 0x2A, 0xEA,
+    0xEE, 0x2E, 0x2F, 0xEF, 0x2D, 0xED, 0xEC, 0x2C,
+    0xE4, 0x24, 0x25, 0xE5, 0x27, 0xE7, 0xE6, 0x26,
+    0x22, 0xE2, 0xE3, 0x23, 0xE1, 0x21, 0x20, 0xE0,
+    0xA0, 0x60, 0x61, 0xA1, 0x63, 0xA3, 0xA2, 0x62,
+    0x66, 0xA6, 0xA7, 0x67, 0xA5, 0x65, 0x64, 0xA4,
+    0x6C, 0xAC, 0xAD, 0x6D, 0xAF, 0x6F, 0x6E, 0xAE,
+    0xAA, 0x6A, 0x6B, 0xAB, 0x69, 0xA9, 0xA8, 0x68,
+    0x78, 0xB8, 0xB9, 0x79, 0xBB, 0x7B, 0x7A, 0xBA,
+    0xBE, 0x7E, 0x7F, 0xBF, 0x7D, 0xBD, 0xBC, 0x7C,
+    0xB4, 0x74, 0x75, 0xB5, 0x77, 0xB7, 0xB6, 0x76,
+    0x72, 0xB2, 0xB3, 0x73, 0xB1, 0x71, 0x70, 0xB0,
+    0x50, 0x90, 0x91, 0x51, 0x93, 0x53, 0x52, 0x92,
+    0x96, 0x56, 0x57, 0x97, 0x55, 0x95, 0x94, 0x54,
+    0x9C, 0x5C, 0x5D, 0x9D, 0x5F, 0x9F, 0x9E, 0x5E,
+    0x5A, 0x9A, 0x9B, 0x5B, 0x99, 0x59, 0x58, 0x98,
+    0x88, 0x48, 0x49, 0x89, 0x4B, 0x8B, 0x8A, 0x4A,
+    0x4E, 0x8E, 0x8F, 0x4F, 0x8D, 0x4D, 0x4C, 0x8C,
+    0x44, 0x84, 0x85, 0x45, 0x87, 0x47, 0x46, 0x86,
+    0x82, 0x42, 0x43, 0x83, 0x41, 0x81, 0x80, 0x40
+} ;
+unsigned short CRC16(unsigned char *puchMsg, unsigned short usDataLen)
+{
+    unsigned char uchCRCHi = 0xFF ;     /* high byte of CRC initialized*/
+    unsigned char uchCRCLo = 0xFF ; /* low byte of CRC initialized*/
+    unsigned uIndex ;                   /* will index into CRC lookup table*/
+    while (usDataLen--)             /* pass through message buffer*/
+    {
+        uIndex   = uchCRCHi ^ *puchMsg++ ;      /* calculate the CRC*/
+        uchCRCHi = uchCRCLo ^ auchCRCHi[uIndex];
+        uchCRCLo = auchCRCLo[uIndex];
+    }
+    return (uchCRCHi << 8 | uchCRCLo);
+}
+
+/*-----------------------------------------------------------------*/
+/* 命令数据包预处理 */
+/*-----------------------------------------------------------------*/
+uint8_t PacketPreprocess(uint8_t *pStr, uint8_t Length, uint8_t PackOrUnpack)
+{
+    uint8_t i, j, NewLength = 0;
+    uint16_t CRC_Value;
+    if(PackOrUnpack)//DATA_UNPACK数据解包
+    {
+        NewLength = Length;
+        if(*pStr == 0x7E)
+        {
+            NewLength -= 1;
+            for(i = 0; i < (Length - 1); i++)
+            {
+                *(pStr + i) = *(pStr + i + 1);
+            }
+        }
+        for(i = 0; i < Length; i++)
+        {
+            if(*(pStr + i) == 125 &&  (i < (Length - 1)) &&  (*(pStr + i + 1) == 94 || *(pStr + i + 1) == 93))
+            {
+                *(pStr + i) = (*(pStr + i + 1) + 32);
+                NewLength --;
+                for(j = i + 1; j < Length; j++)
+                {
+                    if((j + 1) == Length)
+                    {
+                        *(pStr + j) = 0;
+                    }
+                    else
+                    {
+                        *(pStr + j) = *(pStr + j + 1);
+                    }
+                }
+            }
+        }
+    }
+    else if(Length >= 2)//数据封包+ 加入CRC校验位
+    {
+        NewLength = Length + 2;     //加2字节CRC校验
+        CRC_Value = CRC16(pStr, Length);
+        *(pStr + Length) = (uint8_t)CRC_Value;
+        *(pStr + Length + 1) = CRC_Value >> 8;
+
+        for(i = 0; i < NewLength; i++)
+        {
+            if(*(pStr + i) == 126 || *(pStr + i) == 125)
+            {
+                NewLength ++;
+                for(j = NewLength; j > i; j--)
+                {
+                    *(pStr + j) = *(pStr + j - 1);
+                }
+                *(pStr + i)     = 125;
+                *(pStr + i + 1) = (*(pStr + i) - 32);
+            }
+        }
+
+    }
+    return NewLength;
 }
 
 

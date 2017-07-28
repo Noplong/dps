@@ -75,6 +75,7 @@
 #include "stm8l15x_wwdg.h"
 
 
+
 #include "GPRS.h"
 
 #include "Lcd.h"
@@ -83,6 +84,7 @@
 #include "LedBeepKey.h"
 
 #include "MixChannel.h"
+#include "main.h"
 
 
 
