@@ -362,13 +362,13 @@ void LCD_AdressDisp(void)
 {
     LCD_PrintfSpecialChar(SPECIALCHAR_A, PIXEL_ON);//关闭通道单位显示
     LCD_PrintfSpecialChar(SPECIALCHAR_SINGAL, PIXEL_ON);//显示信号状态
-    BitRam[0] = (ParameterBuffer.ParameterConfig.PackageHead_From / 1000) + '0';
-    BitRam[1] = (ParameterBuffer.ParameterConfig.PackageHead_From % 1000 / 100) + '0';
-    BitRam[2] = (ParameterBuffer.ParameterConfig.PackageHead_From % 100 / 10) + '0';
-    BitRam[3] = (ParameterBuffer.ParameterConfig.PackageHead_From % 10) + '0';
+//    BitRam[0] = (ParameterBuffer.ParameterConfig.PackageHead_From / 1000) + '0';
+//    BitRam[1] = (ParameterBuffer.ParameterConfig.PackageHead_From % 1000 / 100) + '0';
+//    BitRam[2] = (ParameterBuffer.ParameterConfig.PackageHead_From % 100 / 10) + '0';
+//    BitRam[3] = (ParameterBuffer.ParameterConfig.PackageHead_From % 10) + '0';
 //    LCD_BlinkConfig(LCD_BlinkMode_AllSEG_AllCOM,LCD_BlinkFrequency_Div512);
-    BitRam[4] = '\0';
-    LCD_Printf(BitRam);
+//    BitRam[4] = '\0';
+//    LCD_Printf(BitRam);
 }
 void LCD_ChannelSetDisp(uint8_t Ch)
 {
@@ -442,30 +442,47 @@ void LCD_DesktopDisp(uint8_t Ch, uint16_t Data)
         return;
     }
     Fun = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] >> 12);
-    if(Fun == SPECIALCHAR_A)//电流显示1位小数,电流值比实际值扩大了10倍
+    if(Fun == SPECIALCHAR_A || Fun == SPECIALCHAR_T ) //电流显示1位小数,电流值比实际值扩大了10倍
     {
         RealData = Data;
-        BitChar[0] = (Ch + 1 + '0');
-        BitChar[1] = '.';
-        BitChar[2] = RealData / 1000 + '0';
-        BitChar[3] = RealData % 1000 / 100 + '0';
-        BitChar[4] = (RealData % 100) / 10 + '0';
-        BitChar[5] = (RealData % 10) + '0';
-
-        if(BitChar[2] != '0')//电流值超过1000A(即实际值超过100A)
+        if(RealData == 0)
         {
-            BitChar[5] = '.';//小数点显示在末尾
+            BitChar[0] = (Ch + 1 + '0');
+            BitChar[1] = '.';
+            BitChar[2] = ' ';
+            BitChar[3] = '0';
+            BitChar[4] = '.';
+            BitChar[5] = '0';
             BitChar[6] = '\0';
         }
-        else//BitChar[2] == '0'
+        else
         {
-            BitChar[2] = ' ';
-            if(BitChar[3] == '0')
+            BitChar[0] = (Ch + 1 + '0');
+            BitChar[1] = '.';
+            BitChar[2] = RealData / 1000 + '0';
+            BitChar[3] = RealData % 1000 / 100 + '0';
+            BitChar[4] = (RealData % 100) / 10 + '0';
+            BitChar[5] = (RealData % 10) + '0';
+
+            if(BitChar[2] != '0')//电流值超过1000A(即实际值超过100A)
             {
-                BitChar[3] = ' ';
+                BitChar[5] = '.';//小数点显示在末尾
+                BitChar[6] = '\0';
             }
-            BitChar[6] = BitChar[5];
-            BitChar[5] = '.';
+            else if(BitChar[3] != '0')
+            {
+                BitChar[2] = BitChar[3];
+                BitChar[3] = BitChar[4];
+                BitChar[4] = '.';
+                BitChar[6] = '\0';
+            }
+            else
+            {
+                BitChar[2] = ' ';
+                BitChar[3] = BitChar[4];
+                BitChar[4] = '.';
+                BitChar[6] = '\0';
+            }
         }
     }
     else

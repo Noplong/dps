@@ -1,0 +1,94 @@
+---- BackLight Matches (5 in 3 files) ----
+LedBeepKey.c (e:\svn\research\personal\wangjinlong\software\app):            BackLight(LED_ON);
+LedBeepKey.c (e:\svn\research\personal\wangjinlong\software\app):                BackLight(LED_OFF);
+LedBeepKey.c (e:\svn\research\personal\wangjinlong\software\app):void BackLight (uint8_t Ctrl)
+LedBeepKey.h (e:\svn\research\personal\wangjinlong\software\app):LEDBEEPKEY_PUBLIC void BackLight (uint8_t Ctrl);
+Main.c (e:\svn\research\personal\wangjinlong\software\app):    BackLight(LED_ON);
+---- ParameterSysStatus.ChannelState Matches (18 in 2 files) ----
+Lcd.c (e:\svn\research\personal\wangjinlong\software\app):    else if((ParameterSysStatus.ChannelState[Ch] & CHANNEL_SHORT) == CHANNEL_SHORT)
+Lcd.c (e:\svn\research\personal\wangjinlong\software\app):    else if((ParameterSysStatus.ChannelState[Ch] & CHANNEL_OPEN) == CHANNEL_OPEN)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                        status = ParameterSysStatus.ChannelState[Channel];
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_FAULT) != 0x00)//有故障
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                        status = ParameterSysStatus.ChannelState[Channel];
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                            status = ParameterSysStatus.ChannelState[Channel];
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):            if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_OPEN) == CHANNEL_OPEN)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                ParameterSysStatus.ChannelState[Channel] &= ~(CHANNEL_OPEN);
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):            else if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_SHORT) == CHANNEL_SHORT)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                ParameterSysStatus.ChannelState[Channel] &= ~(CHANNEL_SHORT);
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):            if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_ALARM) != CHANNEL_ALARM)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                ParameterSysStatus.ChannelState[Channel] = CHANNEL_ALARM;
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):            if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_OPEN) != CHANNEL_OPEN)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_SHORT) == CHANNEL_SHORT)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                ParameterSysStatus.ChannelState[Channel] = CHANNEL_OPEN;
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):            if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_SHORT) != CHANNEL_SHORT)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_OPEN) == CHANNEL_OPEN)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                ParameterSysStatus.ChannelState[Channel] = CHANNEL_SHORT;
+---- ChannelValue Matches (22 in 4 files) ----
+FLASH.h (e:\svn\research\personal\wangjinlong\software\app):    uint16_t ChannelValue[CHANNEL_NUM]; //通道数据
+GPRS.c (e:\svn\research\personal\wangjinlong\software\app):                GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
+GPRS.c (e:\svn\research\personal\wangjinlong\software\app):                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
+GPRS.c (e:\svn\research\personal\wangjinlong\software\app):            GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
+GPRS.c (e:\svn\research\personal\wangjinlong\software\app):            GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                ParameterSysStatus.ChannelValue[Channel] = TempValue;
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                            ParameterSysStatus.ChannelValue[Channel] = (ChannelADNow[Channel] * Leakage_K + Leakage_B);
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                            if(ParameterSysStatus.ChannelValue[Channel] > 5000)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                                ParameterSysStatus.ChannelValue[Channel] = 0;
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                            else if(ParameterSysStatus.ChannelValue[Channel] > 999)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                                ParameterSysStatus.ChannelValue[Channel] = 999;
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                            if(ParameterSysStatus.ChannelValue[Channel] >= ((AlarmValue & 0x0fff) * 99 / 100))
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                                ParameterSysStatus.ChannelValue[Channel] = (ChannelADNow[Channel] * Current_K + Current_B) * 10;
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                                ParameterSysStatus.ChannelValue[Channel] = 0;
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                            if(ParameterSysStatus.ChannelValue[Channel] > 5000)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                                ParameterSysStatus.ChannelValue[Channel] = 0;
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                            if(ParameterSysStatus.ChannelValue[Channel] > 999)
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                                ParameterSysStatus.ChannelValue[Channel] = 999;
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                                            if(ParameterSysStatus.ChannelValue[Channel] >= ((AlarmValue & 0x0fff) * 990 / 100))
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                        if(ParameterSysStatus.ChannelValue[Channel] < 50)//漏电流小于50mA时才开始检测故障
+Window.c (e:\svn\research\personal\wangjinlong\software\app):            LCD_DesktopDisp(Channel, ParameterSysStatus.ChannelValue[Channel]);
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                LCD_DesktopDisp(Channel, ParameterSysStatus.ChannelValue[Channel]);
+---- GPRS_COMMAND_CCID Matches (3 in 2 files) ----
+GPRS.c (e:\svn\research\personal\wangjinlong\software\app):                case GPRS_COMMAND_CCID://读设备CCID
+GPRS.c (e:\svn\research\personal\wangjinlong\software\app):                    QueueGprsPut(GPRS_COMMAND_CCID);
+GPRS.h (e:\svn\research\personal\wangjinlong\software\app):#define GPRS_COMMAND_CCID        8//读设备CCID
+---- PackageHead_From Matches (7 in 4 files) ----
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.PackageHead_From  =1234;
+FLASH.h (e:\svn\research\personal\wangjinlong\software\app):    uint16_t PackageHead_From;//数据包头_源地址
+Lcd.c (e:\svn\research\personal\wangjinlong\software\app):    BitRam[0] = (ParameterBuffer.ParameterConfig.PackageHead_From / 1000) + '0';
+Lcd.c (e:\svn\research\personal\wangjinlong\software\app):    BitRam[1] = (ParameterBuffer.ParameterConfig.PackageHead_From % 1000 / 100) + '0';
+Lcd.c (e:\svn\research\personal\wangjinlong\software\app):    BitRam[2] = (ParameterBuffer.ParameterConfig.PackageHead_From % 100 / 10) + '0';
+Lcd.c (e:\svn\research\personal\wangjinlong\software\app):    BitRam[3] = (ParameterBuffer.ParameterConfig.PackageHead_From % 10) + '0';
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                        ParameterBuffer.ParameterConfig.PackageHead_From = ((BitRam[0] - 0x30) * 1000 + (BitRam[1] - 0x30) * 100 + (BitRam[2] - 0x30) * 10 + (BitRam[3] - 0x30));
+---- ParameterBuffer.ParameterConfig.ChannelAlarmValue Matches (30 in 5 files) ----
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[0] = 0x1258;//600mA
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[1] = 0x2046;//70℃
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[2] = 0x2046;//70℃
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[3] = 0x2046;//70℃
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[4] = 0x2046;//70℃
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[5] = 0x3050;//80A
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[6] = 0x3050;//80A
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[7] = 0x3050;//80A
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[8] = 0x4001;//输入通道1  常开检测0x01
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[9] = 0x4001;//输入通道2  常开检测0x01
+FLASH.c (e:\svn\research\personal\wangjinlong\software\app):    ParameterBuffer.ParameterConfig.ChannelAlarmValue[10] = 0x5001;//输出通道1 报警输出0x01
+GPRS.c (e:\svn\research\personal\wangjinlong\software\app):        ChannelType = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] & 0xF000);
+GPRS.c (e:\svn\research\personal\wangjinlong\software\app):        AlarmValue  = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] & 0x0FFF);
+Lcd.c (e:\svn\research\personal\wangjinlong\software\app):    Fun = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] >> 12);
+Lcd.c (e:\svn\research\personal\wangjinlong\software\app):    RealData = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] & 0x0FFF);
+Lcd.c (e:\svn\research\personal\wangjinlong\software\app):    Fun = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] >> 12);
+Lcd.c (e:\svn\research\personal\wangjinlong\software\app):    if((ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] & 0x0FFF) == 0x0000)//通道关闭
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                        AlarmValue = ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel];
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                        AlarmValue = ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel];
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):                            AlarmValue = ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel];
+MixChannel.c (e:\svn\research\personal\wangjinlong\software\app):    ChannelType = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] & 0xF000);
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                            BitValue = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] >> 12);
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                                    ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] &= 0xF000;
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                                    ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] |= EditValue;
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                                    ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] &= 0xF000;
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                                    ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] |= EditValue;
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                                    ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] &= 0xF000;
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                                    ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] |= EditValue;
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                                ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] &= 0xF000;
+Window.c (e:\svn\research\personal\wangjinlong\software\app):                                ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] |= EditValue;
+---- GPIO_Pin_4 Matches (2 in 2 files) ----
+LedBeepKey.h (e:\svn\research\personal\wangjinlong\software\app):#define LED_ALARM   GPIO_Pin_4
+Stm8l15x_gpio.h (e:\svn\research\personal\wangjinlong\software\driver\inc):  GPIO_Pin_4    = ((uint8_t)0x10),   /*!< Pin 4 selected */

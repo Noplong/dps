@@ -27,11 +27,10 @@ void ReadFlashParameter(void)
     {
         ParameterBuffer.DataBuffer_8[i] = *(((PointerAttr uint8_t*)(MemoryAddressCast)Address) + i);
     }
-//    for(i = 0;i < 12 ;i++)
-//    {
-//        RealData.ChannelEventCommit[i][0] = CHANNEL_UNKNOW;
-//        RealData.ChannelEventCommit[i][1] = CHANNEL_EVENT_NORMAL;
-//    }
+    for(i = 0;i < CHANNEL_NUM ;i++)
+    {
+       ParameterSysStatus.ChannelEvent[i] = 1;//所有通道状态为1，即正常
+    }
 
     if(ParameterBuffer.ParameterConfig.MainSoftWareVersion != CURRENT_VERSION)//软件版本校验
     {
@@ -65,8 +64,8 @@ void FactoryReset(void)
 {
     ParameterBuffer.ParameterConfig.Music = MUSIC_NORMAL;
 
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[0] = 0x11f4;//500mA
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[1] = 0x2046;//500mA
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[0] = 0x1258;//600mA
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[1] = 0x2046;//70℃
 //    ParameterBuffer.ParameterConfig.ChannelAlarmValue[2] = 0x1000;//500mA
 //    ParameterBuffer.ParameterConfig.ChannelAlarmValue[3] = 0x1000;//500mA
 //    ParameterBuffer.ParameterConfig.ChannelAlarmValue[4] = 0x1000;//500mA
@@ -74,23 +73,31 @@ void FactoryReset(void)
 //    ParameterBuffer.ParameterConfig.ChannelAlarmValue[5] = 0x3000;//500mA
 //    ParameterBuffer.ParameterConfig.ChannelAlarmValue[6] = 0x3000;
 //    ParameterBuffer.ParameterConfig.ChannelAlarmValue[7] = 0x3000;//500mA
+    ParameterBuffer.ParameterConfig.HeartBeatTime = 60;
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[2] = 0x2046;//70℃
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[3] = 0x2046;//70℃
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[4] = 0x2046;//70℃
     
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[2] = 0x11f4;//500mA
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[3] = 0x11f4;//500mA
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[4] = 0x11f4;//500mA
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[5] = 0x3050;//80A
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[6] = 0x3050;//80A
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[7] = 0x3050;//80A
     
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[5] = 0x3064;//500mA
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[6] = 0x3064;
-    ParameterBuffer.ParameterConfig.ChannelAlarmValue[7] = 0x3064;//500mA
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[8] = 0x4001;//输入通道1  常开检测0x01
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[9] = 0x4001;//输入通道2  常开检测0x01
+    ParameterBuffer.ParameterConfig.ChannelAlarmValue[10] = 0x5001;//输出通道1 报警输出0x01
 
-    ParameterBuffer.ParameterConfig.ChannelAdParameter[0] = 235;//200mA时AD值
-    ParameterBuffer.ParameterConfig.ChannelAdParameter[1] = 990;//800mA时AD值
+
     
-    ParameterBuffer.ParameterConfig.ChannelAdParameter[2] = 235;//1A时AD值
-    ParameterBuffer.ParameterConfig.ChannelAdParameter[3] = 2656;//5A时AD值
+
+    ParameterBuffer.ParameterConfig.ChannelAdParameter[0] = 422;//200mA时AD值
+    ParameterBuffer.ParameterConfig.ChannelAdParameter[1] = 1650;//800mA时AD值
+    
+    ParameterBuffer.ParameterConfig.ChannelAdParameter[2] = 18;//1A时AD值
+    ParameterBuffer.ParameterConfig.ChannelAdParameter[3] = 181;//5A时AD值
     memcpy(ParameterBuffer.ParameterConfig.ConnectIP, "123.207.71.208,6666\r\n", 23);
+//memcpy(ParameterBuffer.ParameterConfig.ConnectIP, "192.168.1.155,6666\r\n", 23);
+
 //    memcpy(ParameterBuffer.ParameterConfig.ConnectIP, "115.28.103.131,40000\r\n", 23);
-    ParameterBuffer.ParameterConfig.PackageHead_From  =1234;
     ParameterBuffer.ParameterConfig.PackageHead_To  =1000;
 
 //    ParameterBuffer.ParameterConfig.ChannelRatioIn[0] = 100;//100:5

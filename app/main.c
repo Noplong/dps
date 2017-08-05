@@ -134,17 +134,21 @@ static void SysInit_Task (uint32_t param)
     printf("SYSTEM LOADING..........\n");
 
     LCD_GLASS_Init();//段码液晶初始化
+    
 //    printf("Lcd Initialize..........\n");
     ReadFlashParameter();//加载系统配置
     Gprs_Init();//GPRS通讯初始化
     LedBeepKeyInit();//LED及蜂鸣器口初始化
     AdcInit();//ADC通道采集初始化
-    GUI_ShowWindow(Window_Desktop, WM_SHOW);
-//    printf("LedBeepKey Initialize..........\n");
     BackLight(LED_ON);
+    RelayCtrl(LED_OFF);
+    GUI_ShowWindow(Window_Desktop, WM_SHOW);
+    gKeyUnpressedCount = 0;
+//    printf("LedBeepKey Initialize..........\n");
     while (1)
     {
         test_status = atomQueueGet(&Queue_Lcd, 300, &msg);
+        gKeyUnpressedCount++;
         HeartBeat_Timer();
         MusicTimerCallback();
         LCD_BlinkDisop();

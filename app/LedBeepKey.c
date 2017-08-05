@@ -31,7 +31,7 @@ void LedBeepKeyInit(void)
     GPIO_Init(GPIOE, GPIO_Pin_7, GPIO_Mode_Out_PP_Low_Fast);
 
     //BACKLIGHT
-    GPIO_Init(GPIOC, GPIO_Pin_7, GPIO_Mode_Out_PP_Low_Fast);
+    GPIO_Init(GPIOF, GPIO_Pin_6, GPIO_Mode_Out_PP_Low_Fast);
 
     //KEY
     GPIO_Init(GPIOG, GPIO_Pin_2 | GPIO_Pin_3, GPIO_Mode_In_PU_No_IT);
@@ -62,7 +62,7 @@ void LedBeepKeyInit(void)
 
 void LedCtrl(uint8_t GPIO_Pin, uint8_t State)
 {
-//    GPIO_WriteBit(LED_PORT,GPIO_Pin,State);
+//GPIO_WriteBit(LED_PORT,GPIO_Pin,State);
 //GPIO_WriteBit(LED_PORT,LED_ALARM | LED_COMM | LED_FAULT,State);
     if(State == LED_ON)
     {
@@ -72,6 +72,95 @@ void LedCtrl(uint8_t GPIO_Pin, uint8_t State)
     {
         GPIO_SetBits(LED_PORT, GPIO_Pin);
 
+    }
+
+
+}
+void KeySetSound(uint8_t key)
+{
+    static uint8_t KeyBuf[6];
+    static uint8_t KeyIndex = 0;
+    static const uint8_t SetSound[] = {KEY_ENTER, KEY_ENTER, KEY_ENTER, KEY_ENTER, KEY_ENTER, KEY_MENU};
+    switch(KeyIndex)
+    {
+        case 0:
+            if(key == KEY_ENTER)
+            {
+                KeyBuf[KeyIndex++] = key;
+            }
+            else
+            {
+                KeyIndex = 0;
+            }
+            break;
+        case 1:
+            if(key == KEY_ENTER)
+            {
+                KeyBuf[KeyIndex++] = key;
+            }
+            else
+            {
+                KeyIndex = 0;
+            }
+            break;
+        case 2:
+            if(key == KEY_ENTER)
+            {
+                KeyBuf[KeyIndex++] = key;
+            }
+            else
+            {
+                KeyIndex = 0;
+            }
+            break;
+        case 3:
+            if(key == KEY_ENTER)
+            {
+                KeyBuf[KeyIndex++] = key;
+            }
+            else
+            {
+                KeyIndex = 0;
+            }
+            break;
+        case 4:
+            if(key == KEY_ENTER)
+            {
+                KeyBuf[KeyIndex++] = key;
+            }
+            else
+            {
+                KeyIndex = 0;
+            }
+            break;
+        case 5:
+            if(key == KEY_MENU)
+            {
+                KeyBuf[KeyIndex++] = key;
+                if(!memcmp(KeyBuf, SetSound, sizeof(SetSound)))
+                {
+//                    GPIO_ResetBits(GPIOE, GPIO_Pin_7);
+                    GPIO_SetBits(GPIOE, GPIO_Pin_7);
+                    if(ParameterBuffer.ParameterConfig.Music == MUSIC_NORMAL)
+                    {
+                        ParameterBuffer.ParameterConfig.Music = MUSIC_MUTE;
+                    }
+                    else
+                    {
+                        ParameterBuffer.ParameterConfig.Music = MUSIC_NORMAL;
+                    }
+                    WriteFlashParameter();
+                    GPIO_ResetBits(GPIOE, GPIO_Pin_7);
+                }
+            }
+            else
+            {
+                KeyIndex = 0;
+            }
+            break;
+        default:
+            KeyIndex = 0;
+            break;
     }
 
 
@@ -88,13 +177,13 @@ uint8_t KEY_GetKey(void)
     switch(key_value)
     {
         case 0x88:
-            KEY = KEY_1;
+            KEY = KEY_MENU;
             break;
         case 0x84:
-            KEY = KEY_2;
+            KEY = KEY_ENTER;
             break;
         case 0x0C:
-            KEY = KEY_3;
+            KEY = KEY_RETURN;
             break;
         default:
             KEY = 0xFF;
@@ -103,7 +192,7 @@ uint8_t KEY_GetKey(void)
     return KEY;
 
 }
-
+#define LONG_PRESS 10
 static void KeyScanTask(uint32_t param)
 {
     uint8_t key = 0, key_old = 0, key_state = KEY_UNPRESS;
@@ -122,17 +211,39 @@ static void KeyScanTask(uint32_t param)
                 MUSIC_Set(MUSIC_KEY);
             }
             key_state = KEY_PRESS;
+            gKeyUnpressedCount = 0;
+            BackLight(LED_ON);
+            KeySetSound(key);//设置音响模式
+
             switch(key)
             {
-                case KEY_1:
-                case KEY_2:
-                case KEY_3:
+                case KEY_MENU:
+                case KEY_ENTER:
+                case KEY_RETURN:
                     ParameterSysStatus.KeyValue = key;
                     GUI_ShowWindow(CurrentWindow, WM_KEY);
                     break;
                 default:
                     break;
             }
+        }
+        if((key == key_old) && (key == 0xff) && (key_state == KEY_UNPRESS))//无按键操作
+        {
+            if(gKeyUnpressedCount >= KEY_TIMEOUT)
+            {
+                if(CurrentWindow != Window_Desktop)
+                {
+                    ParameterSysStatus.KeyValue = KEY_RETURN;
+                    GUI_ShowWindow(CurrentWindow, WM_KEY);
+                }
+            }
+
+            if(gKeyUnpressedCount >= LCD_TIMEOUT)
+            {
+                gKeyUnpressedCount = LCD_TIMEOUT;
+                BackLight(LED_OFF);
+            }
+
         }
 
         if((key == key_old) && (key == 0xff) && (key_state == KEY_PRESS))
@@ -143,8 +254,16 @@ static void KeyScanTask(uint32_t param)
         if((key == key_old) && (key != 0xff) && (key_state == KEY_PRESS))
         {
             count++;
-            if(count > 10)
+            if(count > 100 && key == KEY_ENTER)//长按确认键复位
             {
+                MUSIC_Set(MUSIC_KEY);
+                WWDG_SWReset();
+                count = 0;
+            }
+            if(count > 100 && key == KEY_ENTER)//长按返回键复位
+            {
+                MUSIC_Set(MUSIC_KEY);
+                WWDG_SWReset();
                 count = 0;
             }
         }
@@ -166,6 +285,7 @@ static void MUSIC_Off(void)
 }
 static void MUSIC_On(void)
 {
+//    GPIO_ResetBits(GPIOE, GPIO_Pin_7);
     GPIO_SetBits(GPIOE, GPIO_Pin_7);
 }
 
@@ -208,12 +328,12 @@ void BackLight (uint8_t Ctrl)
 {
     if(Ctrl == LED_ON)
     {
-        GPIO_SetBits(GPIOC, BACK_LIGHT);
+        GPIO_SetBits(GPIOF, BACK_LIGHT);
     }
     else
     {
 
-        GPIO_ResetBits(GPIOC, BACK_LIGHT);
+        GPIO_ResetBits(GPIOF, BACK_LIGHT);
     }
 }
 
@@ -225,6 +345,14 @@ void LedShow (void)
 
     MusicType = MUSIC_State();
     led_cnt ++;
+    if(ParameterSysStatus.AlarmCount != 0 && (ParameterBuffer.ParameterConfig.ChannelAlarmValue[10] & 0x0FFF) == 0x0001)
+    {
+        RelayCtrl(LED_ON);
+    }
+    else if(ParameterSysStatus.FaultCount != 0 && (ParameterBuffer.ParameterConfig.ChannelAlarmValue[10] & 0x0FFF) == 0x0002)
+    {
+        RelayCtrl(LED_ON);
+    }
 
     if(MusicType == MUSIC_FIRE)
     {
@@ -287,9 +415,12 @@ void MusicTimerCallback (void)
     static uint8_t music_cnt = 0;
 
     music_cnt++;
-    LedShow();
+    if(CurrentWindow != Window_SelfCheck)
+    {
+        LedShow();
+    }
     music_type = MUSIC_State();
-    if(ParameterBuffer.ParameterConfig.Music == MUSIC_MUTE)
+    if(ParameterBuffer.ParameterConfig.Music == MUSIC_MUTE && CurrentWindow != Window_SelfCheck)
     {
         MUSIC_Off();
         return;
@@ -299,7 +430,7 @@ void MusicTimerCallback (void)
 //        case MUSIC_FAULT:
         case MUSIC_FIRE:
         {
-            if (music_cnt == 2)
+            if (music_cnt >= 2)
             {
                 music_cnt = 0;
                 MUSIC_On();
@@ -313,7 +444,7 @@ void MusicTimerCallback (void)
         break;
         case MUSIC_FAULT:
         {
-            if (music_cnt == 9)
+            if (music_cnt >= 9)
             {
                 music_cnt = 0;
                 MUSIC_On();

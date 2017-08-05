@@ -18,7 +18,7 @@
 #define FLASH_PUBLIC extern
 #endif
 
-#define CHANNEL_NUM 8
+#define CHANNEL_NUM 11
 
 //事件类型
 #define CHANNEL_NORMAL      0x00
@@ -51,24 +51,22 @@ typedef struct
 FLASH_PUBLIC PARAMETER_STATUS ParameterSysStatus;
 
 //配置存储空间大小
-#define PARAMETER_CONFIG_SIZE  80
+#define PARAMETER_CONFIG_SIZE  90
 
 
 //软件版本
 #define CURRENT_VERSION   01
 
 
-#define MUSIC_MUTE          0x01
-#define MUSIC_NORMAL        0x02
-
-
+#define MUSIC_MUTE          0x00
+#define MUSIC_NORMAL        0x01
 
 
 typedef struct
 {
     unsigned char Music;                        //音响模式
-    
-    uint16_t PackageHead_From;//数据包头_源地址
+    uint8_t HeartBeatTime;  //心跳间隔
+
     uint16_t PackageHead_To;//数据包头_目的地址
     uint8_t ConnectIP[23];//通讯主站IP及端口
 

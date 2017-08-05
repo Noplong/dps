@@ -73,6 +73,11 @@ typedef enum {
 
 LCD_PUBLIC WinName_t CurrentWindow;
 
+#define KEY_TIMEOUT     40
+#define LCD_TIMEOUT     80
+
+LCD_PUBLIC uint16_t gKeyUnpressedCount;//°´¼ü³¬Ê±
+
 LCD_PUBLIC void LCD_GLASS_Init(void);
 LCD_PUBLIC void LCD_SetPixel(uint8_t Com, uint8_t Seg, LCD_PIXEL_SET_TypeDef On_Off);
 LCD_PUBLIC void LCD_DisplayChar(uint8_t ch,uint8_t position,uint8_t signbit);

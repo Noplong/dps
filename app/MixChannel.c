@@ -13,16 +13,12 @@
 
 #include "stm8l15x_conf.h"
 #include "atomsem.h"
-#include "atomqueue.h"
+//#include "atomqueue.h"
 #include "temp.h"
 
 #define DMA_BUF_SIZE 11
 #define ADC1_DR_Address    ((uint16_t)(0x5344) )//ADC1外设地址
 unsigned short ADC_ConvertedValue[DMA_BUF_SIZE];
-uint16_t ADC[9] = {ADC_Channel_17, ADC_Channel_16, ADC_Channel_15,
-                   ADC_Channel_14, ADC_Channel_13, ADC_Channel_12,
-                   ADC_Channel_11, ADC_Channel_10, ADC_Channel_9
-                  };
 
 static ATOM_TCB AdcTask_Tcb;
 NEAR static uint8_t Adc_thread_stack[ADC_TASK_SIZE_BYTES];
@@ -44,9 +40,9 @@ static uint8_t      ArrayCount;
 volatile uint8_t    TempArray[8][ARR_LEN];
 
 
-uint8_t AdChannel[10] = {4, 3, 2, 8, 9 //混合通道C0-C4
-                         , 7, 6, 5 //电流通道I1-I3
-                         , 0, 1
+uint8_t AdChannel[10] = {7, 6, 5, 8, 9 //混合通道C0-C4
+                         , 4, 3, 0 //电流通道I1-I3
+                         , 1, 2
                         };//无缘输入通道Singal1-Singal2
 float Leakage_K;
 float Leakage_B;
@@ -66,25 +62,25 @@ void AdcInit(void)
     ADC_SamplingTimeConfig(ADC1, ADC_Group_FastChannels, ADC_SamplingTime_24Cycles);
 
     ADC_ChannelCmd(ADC1, ADC_Channel_Vrefint, ENABLE);
-    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_13, DISABLE);
-    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_12, DISABLE);
-    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_11, DISABLE);
-    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_24, DISABLE);
-    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_25, DISABLE);
-    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_16, DISABLE);
-    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_15, DISABLE);
-    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_14, DISABLE);
-    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_7, DISABLE);
-    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_8, DISABLE);
+    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_13, DISABLE);//
+    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_12, DISABLE);//
+    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_11, DISABLE);//
+    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_24, DISABLE);//
+    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_25, DISABLE);//
+    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_10, DISABLE);//
+    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_9, DISABLE);//
+    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_4, DISABLE);//0
+    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_7, DISABLE);//
+    ADC_SchmittTriggerConfig(ADC1, ADC_Channel_8, DISABLE);//
 
     ADC_ChannelCmd(ADC1, ADC_Channel_13, ENABLE);
     ADC_ChannelCmd(ADC1, ADC_Channel_12, ENABLE);
     ADC_ChannelCmd(ADC1, ADC_Channel_11, ENABLE);
     ADC_ChannelCmd(ADC1, ADC_Channel_24, ENABLE);
     ADC_ChannelCmd(ADC1, ADC_Channel_25, ENABLE);
-    ADC_ChannelCmd(ADC1, ADC_Channel_16, ENABLE);
-    ADC_ChannelCmd(ADC1, ADC_Channel_15, ENABLE);
-    ADC_ChannelCmd(ADC1, ADC_Channel_14, ENABLE);
+    ADC_ChannelCmd(ADC1, ADC_Channel_10, ENABLE);
+    ADC_ChannelCmd(ADC1, ADC_Channel_9, ENABLE);
+    ADC_ChannelCmd(ADC1, ADC_Channel_4, ENABLE);
     ADC_ChannelCmd(ADC1, ADC_Channel_7, ENABLE);
     ADC_ChannelCmd(ADC1, ADC_Channel_8, ENABLE);
 
@@ -149,14 +145,15 @@ uint16_t GetTemperature(uint32_t *CurrentValue)
             break;
         }
     }
-    TempValue = temperature[i + 1][0];
+    TempValue = (((temperature[i][1] - TempValue) * 10) / (temperature[i][1] - temperature[i + 1][1]));
+    TempValue += (temperature[i][0] * 10);
     if(i < 20)                                          //温度在0-150之间
     {
         TempValue = 0;
     }
     else if(i >= 170)
     {
-        TempValue = 150;
+        TempValue = 1500;
     }
     return TempValue;
 
@@ -220,9 +217,10 @@ uint8_t isForwardAlarm(uint8_t ChannelCount, uint16_t AlarmThreshold)
 static void ADCTask(uint32_t param)
 {
     uint8_t status, Channel, i;
-    uint16_t AlarmValue;
+    uint16_t AlarmValue, TempValue;
     uint32_t TempTotal[CHANNEL_NUM];
     static uint8_t GetTemp = 0;
+    static uint8_t TempCtrl = 0;
     static uint16_t ChannelADMark[CHANNEL_NUM];//高四位代表报警次数，低12为代表ADMax
     static uint16_t ChannelADNow[CHANNEL_NUM];//此次AD最大值
     while(1)
@@ -272,31 +270,36 @@ static void ADCTask(uint32_t param)
                         AlarmValue = ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel];
                         status = ParameterSysStatus.ChannelState[Channel];
                         ADC_ConvertedValue[AdChannel[Channel]] = (ADC_ConvertedValue[AdChannel[Channel]] % 4095);
-                        if(((AlarmValue & CHANNEL_TYPE_TEMP) == CHANNEL_TYPE_TEMP) //是温度通道
+                        if(((AlarmValue & 0xF000) == CHANNEL_TYPE_TEMP) //是温度通道
                            && ((AlarmValue & CHANNEL_ALARM_VALUE) != 0) //通道在线
                            && ((status & CHANNEL_UNKNOW) != CHANNEL_UNKNOW))//通道状态确定
                         {
                             if(AdcState.ConvertCount <= 2)
                             {
                                 TempTotal[Channel] = 0;
+//                                if(TempCtrl == 0)
                                 ChannelADNow[Channel] = ADC_ConvertedValue[AdChannel[Channel]];
                             }
                             else if(AdcState.ConvertCount <= 199) //
                             {
-                                if(ADC_ConvertedValue[AdChannel[Channel]] > ChannelADNow[Channel])
+//                                if(TempCtrl == 0)
                                 {
-                                    ChannelADNow[Channel] = ADC_ConvertedValue[AdChannel[Channel]];
+                                    if(ADC_ConvertedValue[AdChannel[Channel]] > ChannelADNow[Channel])
+                                    {
+                                        ChannelADNow[Channel] = ADC_ConvertedValue[AdChannel[Channel]];
+                                    }
+                                    TempTotal[Channel] += ADC_ConvertedValue[AdChannel[Channel]];
                                 }
-                                TempTotal[Channel] += ADC_ConvertedValue[AdChannel[Channel]];
                             }
                             else
                             {
 //                                AdcState.ConvertCount = 200;
 //                                GPIO_SetBits(GPIOB, GPIO_Pin_1);
                                 TempTotal[Channel] = ((TempTotal[Channel] - ChannelADNow[Channel]) / 196);
-                                status = GetTemperature(&TempTotal[Channel]);
-                                ParameterSysStatus.ChannelValue[Channel] = status;
-                                if((ChannelADMark[Channel] & 0x0FFF) == 0 && status == 0)
+                                TempValue = GetTemperature(&TempTotal[Channel]);//温度扩大10倍
+                                ParameterSysStatus.ChannelValue[Channel] = TempValue;
+
+                                if((ChannelADMark[Channel] & 0x0FFF) == 0 && TempValue == 0)
                                 {
                                     ChannelADMark[Channel] += 0x1000;
 
@@ -311,19 +314,25 @@ static void ADCTask(uint32_t param)
                                         {
                                             EventProcess(Channel, CHANNEL_SHORT);
                                         }
-                                        ChannelADMark[Channel] = ((ChannelADMark[Channel] & 0x0FFF) | status);
+                                        ChannelADMark[Channel] = 0x0000;
                                         continue;
                                     }
+                                }
+                                else if(((ChannelADMark[Channel] & 0x0FFF) == 0 && TempValue != 0)
+                                        || ((ChannelADMark[Channel] & 0x0FFF) != 0 && TempValue == 0))
+                                {
+                                    ChannelADMark[Channel] = ((ChannelADMark[Channel] & 0x0000) | TempValue);
+                                    continue;
                                 }
 
                                 if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_FAULT) != 0x00)//有故障
                                 {
-                                    if((ChannelADMark[Channel] & 0x0FFF) == 0 && status != 0)
+                                    if((ChannelADMark[Channel] & 0x0FFF) == 0 && TempValue != 0)
                                     {
-                                        ChannelADMark[Channel] = ((ChannelADMark[Channel] & 0x0FFF) | status);
+                                        ChannelADMark[Channel] = ((ChannelADMark[Channel] & 0x0FFF) | TempValue);
                                         continue;
                                     }
-                                    else if((ChannelADMark[Channel] & 0x0FFF) != 0 && status != 0)
+                                    else if((ChannelADMark[Channel] & 0x0FFF) != 0 && TempValue != 0)
                                     {
                                         ChannelADMark[Channel] += 0x1000;
                                         if((ChannelADMark[Channel] >> 12) >= CHECK_TIMES)
@@ -331,22 +340,32 @@ static void ADCTask(uint32_t param)
                                             ChannelADMark[Channel] &= 0x0FFF;
                                             EventProcess(Channel, CHANNEL_NORMAL);
                                         }
-                                        ChannelADMark[Channel] = ((ChannelADMark[Channel] & 0xF000) | status);
+                                        ChannelADMark[Channel] = ((ChannelADMark[Channel] & 0xF000) | TempValue);
                                         continue;
                                     }
                                 }
 
-                                ChannelADMark[Channel] = status;
+                                ChannelADMark[Channel] = ((ChannelADMark[Channel] & 0xF000) | TempValue);
 
+                                TempValue = TempValue / 10;
                                 for(i = 0; i < ARR_LEN - 1; i++)
                                 {
                                     TempArray[Channel][ARR_LEN - 1 - i] = TempArray[Channel][ARR_LEN - 1 - i - 1];
                                 }
-                                TempArray[Channel][0] = status;
+                                TempArray[Channel][0] = TempValue;
 
                                 if(isForwardAlarm(Channel, AlarmValue & 0x0fff))
                                 {
                                     EventProcess(Channel, CHANNEL_ALARM);
+                                }
+                                else if(TempValue >= ((AlarmValue & 0x0fff) * 99 / 100) )
+                                {
+                                    ChannelADMark[Channel] += 0x1000;
+                                    if((ChannelADMark[Channel] >> 12) >= CHECK_TIMES)
+                                    {
+                                        EventProcess(Channel, CHANNEL_ALARM);
+                                        ChannelADMark[Channel] &= 0x0FFF;
+                                    }
                                 }
 //                                GPIO_ResetBits(GPIOB, GPIO_Pin_1);
                             }
@@ -362,7 +381,7 @@ static void ADCTask(uint32_t param)
                         status = ParameterSysStatus.ChannelState[Channel];
                         ADC_ConvertedValue[AdChannel[Channel]] = (ADC_ConvertedValue[AdChannel[Channel]] % 4095);
 
-                        if((AlarmValue & CHANNEL_TYPE_TEMP) != CHANNEL_TYPE_TEMP //不是温度通道
+                        if((AlarmValue & 0xF000) != CHANNEL_TYPE_TEMP //不是温度通道
                            && (AlarmValue & CHANNEL_ALARM_VALUE) != 0 //通道在线
                            && (status & CHANNEL_UNKNOW) != CHANNEL_UNKNOW//通道状态确定
                            && (status & CHANNEL_FAULT) == 0x00 ) //通道无故障
@@ -387,15 +406,24 @@ static void ADCTask(uint32_t param)
                                 }
                                 else
                                 {
-                                    if((((ChannelADMark[Channel] & 0x0FFF) <= ChannelADNow[Channel]) && ((ChannelADNow[Channel] - (ChannelADMark[Channel] & 0x0FFF)) < 100))
-                                       || ((ChannelADNow[Channel] <= (ChannelADMark[Channel] & 0x0FFF)) && (((ChannelADMark[Channel] & 0x0FFF) - ChannelADNow[Channel]) < 100)))
+                                    if((AlarmValue & 0xF000) == CHANNEL_TYPE_LEAKAGE)
                                     {
-                                        ChannelADMark[Channel] &= 0xF000;
-                                        ChannelADMark[Channel] |= (0x0FFF & ChannelADNow[Channel]);
-                                        if((AlarmValue & CHANNEL_TYPE_LEAKAGE) == CHANNEL_TYPE_LEAKAGE)
+
+                                        if((((ChannelADMark[Channel] & 0x0FFF) <= ChannelADNow[Channel]) && ((ChannelADNow[Channel] - (ChannelADMark[Channel] & 0x0FFF)) < 20))
+                                           || ((ChannelADNow[Channel] <= (ChannelADMark[Channel] & 0x0FFF)) && (((ChannelADMark[Channel] & 0x0FFF) - ChannelADNow[Channel]) < 20)))
                                         {
+                                            ChannelADMark[Channel] &= 0xF000;
+                                            ChannelADMark[Channel] |= (0x0FFF & ChannelADNow[Channel]);
+
+
                                             ParameterSysStatus.ChannelValue[Channel] = (ChannelADNow[Channel] * Leakage_K + Leakage_B);
-                                            if(ParameterSysStatus.ChannelValue[Channel] > 999)
+
+                                            if(ParameterSysStatus.ChannelValue[Channel] > 5000)
+
+                                            {
+                                                ParameterSysStatus.ChannelValue[Channel] = 0;
+                                            }
+                                            else if(ParameterSysStatus.ChannelValue[Channel] > 999)
                                             {
                                                 ParameterSysStatus.ChannelValue[Channel] = 999;
                                             }
@@ -409,9 +437,33 @@ static void ADCTask(uint32_t param)
                                                 }
                                             }
                                         }
-                                        else if((AlarmValue & CHANNEL_TYPE_CURRENT) == CHANNEL_TYPE_CURRENT)
+                                        else
                                         {
-                                            ParameterSysStatus.ChannelValue[Channel] = (ChannelADNow[Channel] * Current_K + Current_B) * 10;
+                                            ChannelADMark[Channel] = 0xF000;
+                                        }
+                                    }
+                                    else if((AlarmValue & 0xF000) == CHANNEL_TYPE_CURRENT)
+                                    {
+                                        if((((ChannelADMark[Channel] & 0x0FFF) <= ChannelADNow[Channel]) && ((ChannelADNow[Channel] - (ChannelADMark[Channel] & 0x0FFF)) < 10))
+                                           || ((ChannelADNow[Channel] <= (ChannelADMark[Channel] & 0x0FFF)) && (((ChannelADMark[Channel] & 0x0FFF) - ChannelADNow[Channel]) < 10)))
+                                        {
+                                            ChannelADMark[Channel] &= 0xF000;
+                                            ChannelADMark[Channel] |= (0x0FFF & ChannelADNow[Channel]);
+
+                                            if(ChannelADNow[Channel] > 5)
+                                            {
+                                                ParameterSysStatus.ChannelValue[Channel] = (ChannelADNow[Channel] * Current_K + Current_B) * 10;
+                                            }
+                                            else
+                                            {
+                                                ParameterSysStatus.ChannelValue[Channel] = 0;
+                                            }
+
+                                            if(ParameterSysStatus.ChannelValue[Channel] > 5000)
+                                            {
+                                                ParameterSysStatus.ChannelValue[Channel] = 0;
+                                            }
+
                                             if(ParameterSysStatus.ChannelValue[Channel] > 999)
                                             {
                                                 ParameterSysStatus.ChannelValue[Channel] = 999;
@@ -427,11 +479,12 @@ static void ADCTask(uint32_t param)
                                                 }
                                             }
                                         }
+                                        else
+                                        {
+                                            ChannelADMark[Channel] = 0xF000;
+                                        }
                                     }
-                                    else
-                                    {
-                                        ChannelADMark[Channel] = 0xF000;
-                                    }
+
                                 }
 
                             }
@@ -440,15 +493,15 @@ static void ADCTask(uint32_t param)
                     break;
                 case ADC_STEP_CHECK_CURRENT:
 
-                    for(Channel = 0; Channel < 8; Channel++)
+                    for(Channel = 0; Channel < 10; Channel++)
                     {
                         if(ParameterSysStatus.ChannelValue[Channel] < 50)//漏电流小于50mA时才开始检测故障
                         {
                             AlarmValue = ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel];
                             status = ParameterSysStatus.ChannelState[Channel];
-                            ADC_ConvertedValue[AdChannel[Channel]] = (ADC_ConvertedValue[AdChannel[Channel]] % 4095);
+                            ADC_ConvertedValue[AdChannel[Channel]] = (ADC_ConvertedValue[AdChannel[Channel]] % 4096);
 
-                            if((AlarmValue & CHANNEL_TYPE_TEMP) != CHANNEL_TYPE_TEMP //不是温度通道
+                            if((AlarmValue & 0xF000) != CHANNEL_TYPE_TEMP //不是温度通道
                                && (AlarmValue & CHANNEL_ALARM_VALUE) != 0) //通道在线
                             {
                                 if(AdcState.ConvertCount <= 10)
@@ -469,38 +522,123 @@ static void ADCTask(uint32_t param)
                                     AdcState.ConvertCount = 200;
                                     TempTotal[Channel] = ((TempTotal[Channel] - ChannelADNow[Channel]) / 40);
 
-                                    if(TempTotal[Channel] < 100)//短路
+                                    if(Channel < 5)//剩余电流通道和温度通道
                                     {
-                                        TempArray[Channel][0]++;//短路计数
-                                        TempArray[Channel][1] = 0; //开路计数
-                                        TempArray[Channel][2] = 0; //正常计数
-                                        if(TempArray[Channel][0] >= CHECK_TIMES)
+                                        if(TempTotal[Channel] < 100)//短路
                                         {
-                                            TempArray[Channel][0] = CHECK_TIMES;
-                                            EventProcess(Channel, CHANNEL_SHORT);
+                                            TempArray[Channel][0]++;//短路计数
+                                            TempArray[Channel][1] = 0; //开路计数
+                                            TempArray[Channel][2] = 0; //正常计数
+                                            if(TempArray[Channel][0] >= CHECK_TIMES)
+                                            {
+                                                TempArray[Channel][0] = CHECK_TIMES;
+                                                EventProcess(Channel, CHANNEL_SHORT);
+                                            }
+                                        }
+                                        else if(TempTotal[Channel] > 2000)//开路
+                                        {
+                                            TempArray[Channel][0] = 0; //短路计数
+                                            TempArray[Channel][1]++;//开路计数
+                                            TempArray[Channel][2] = 0; //正常计数
+                                            if(TempArray[Channel][1] >= CHECK_TIMES)
+                                            {
+                                                TempArray[Channel][1] = CHECK_TIMES;
+                                                EventProcess(Channel, CHANNEL_OPEN);
+                                            }
+                                        }
+                                        else //正常
+                                        {
+                                            TempArray[Channel][0] = 0; //短路计数
+                                            TempArray[Channel][1] = 0; //开路计数
+                                            TempArray[Channel][2]++; //正常计数
+                                            if(TempArray[Channel][2] >= CHECK_TIMES)
+                                            {
+                                                TempArray[Channel][2] = CHECK_TIMES;
+                                                EventProcess(Channel, CHANNEL_NORMAL);
+                                            }
                                         }
                                     }
-                                    else if(TempTotal[Channel] > 2000)//开路
+                                    else if(Channel < 8)//电流通道
                                     {
-                                        TempArray[Channel][0] = 0; //短路计数
-                                        TempArray[Channel][1]++;//开路计数
-                                        TempArray[Channel][2] = 0; //正常计数
-                                        if(TempArray[Channel][1] >= CHECK_TIMES)
+                                        if(TempTotal[Channel] == 0)
                                         {
-                                            TempArray[Channel][1] = CHECK_TIMES;
-                                            EventProcess(Channel, CHANNEL_OPEN);
+                                            ChannelADMark[Channel] = 0xF000;
+                                            ParameterSysStatus.ChannelValue[Channel] = 0;
                                         }
                                     }
-                                    else //正常
+                                    else if(Channel < 10)//输入通道
                                     {
-                                        TempArray[Channel][0] = 0; //短路计数
-                                        TempArray[Channel][1] = 0; //开路计数
-                                        TempArray[Channel][2]++; //正常计数
-                                        if(TempArray[Channel][2] >= CHECK_TIMES)
+                                        if((AlarmValue & 0x000F)  == 0x01)//常开检测
                                         {
-                                            TempArray[Channel][2] = CHECK_TIMES;
-                                            EventProcess(Channel, CHANNEL_NORMAL);
+                                            if(TempTotal[Channel] < 4000)//闭合
+                                            {
+                                                TempArray[Channel][0]++;//短路计数
+
+                                                TempArray[Channel][2] = 0; //正常计数
+                                                if(TempArray[Channel][0] >= (CHECK_TIMES * 3))
+                                                {
+                                                    TempArray[Channel][0] = CHECK_TIMES;
+                                                    EventProcess(Channel, CHANNEL_ALARM);
+                                                }
+                                            }
+                                            else if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_ALARM) == CHANNEL_ALARM)
+                                            {
+                                                TempArray[Channel][0] = 0; //短路计数
+                                                TempArray[Channel][2]++; //正常计数
+                                                if(TempArray[Channel][2] >= (CHECK_TIMES * 3))
+                                                {
+                                                    TempArray[Channel][2] = 0;
+                                                    ParameterSysStatus.AlarmCount --;
+                                                    if(ParameterSysStatus.AlarmCount == 0)
+                                                    {
+                                                        LedCtrl(LED_ALARM, LED_OFF);
+                                                        if(MUSIC_State() == MUSIC_FIRE)
+                                                        {
+                                                            MUSIC_Set(MUSIC_NONE);
+                                                        }
+                                                    }
+                                                    ParameterSysStatus.ChannelState[Channel] &= ~(CHANNEL_ALARM);
+                                                    ParameterSysStatus.ChannelEvent[Channel] = 1;//正常
+                                                }
+                                            }
+
                                         }
+                                        else if((AlarmValue & 0x000F)  == 0x02)//常闭检测
+                                        {
+                                            if(TempTotal[Channel] > 4000)//断开
+                                            {
+                                                TempArray[Channel][0]++;//开路计数
+
+                                                TempArray[Channel][2] = 0; //正常计数
+                                                if(TempArray[Channel][0] >= (CHECK_TIMES * 3))
+                                                {
+                                                    TempArray[Channel][0] = 0;
+                                                    EventProcess(Channel, CHANNEL_ALARM);
+                                                }
+                                            }
+                                            else if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_ALARM) == CHANNEL_ALARM)
+                                            {
+                                                TempArray[Channel][0] = 0; //短路计数
+                                                TempArray[Channel][2]++; //正常计数
+                                                if(TempArray[Channel][2] >= (CHECK_TIMES * 3))
+                                                {
+                                                    TempArray[Channel][2] = 0;
+                                                    ParameterSysStatus.AlarmCount --;
+                                                    if(ParameterSysStatus.AlarmCount == 0)
+                                                    {
+                                                        LedCtrl(LED_ALARM, LED_OFF);
+                                                        if(MUSIC_State() == MUSIC_FIRE)
+                                                        {
+                                                            MUSIC_Set(MUSIC_NONE);
+                                                        }
+                                                    }
+                                                    ParameterSysStatus.ChannelState[Channel] &= ~(CHANNEL_ALARM);
+                                                    ParameterSysStatus.ChannelEvent[Channel] = 1;//正常
+                                                }
+                                            }
+
+                                        }
+
                                     }
 
                                 }
@@ -541,6 +679,10 @@ static void AdcFunChange(void)
             GPIO_ResetBits(GPIOC, TEMP_CTRL_IO);
             GPIO_ResetBits(GPIOC, CURRENT_CTRL_IO);
             GPIO_SetBits(GPIOC, CHECK_CURRENT_IO);
+//            GPIO_SetBits(GPIOC, TEMP_CTRL_IO);
+//            GPIO_SetBits(GPIOC, CURRENT_CTRL_IO);
+//            GPIO_ResetBits(GPIOC, CHECK_CURRENT_IO);
+
             break;
         case ADC_STEP_CHECK_CURRENT:
             GPIO_SetBits(GPIOC, TEMP_CTRL_IO);
@@ -550,45 +692,59 @@ static void AdcFunChange(void)
     }
     AdcState.InChange = ADC_CHANGE_DOING;
 }
+void RelayCtrl(uint8_t Ctrl)
+{
+    GPIO_Init(GPIOF, RELAY_CTRL_IO, GPIO_Mode_Out_PP_High_Fast);
+    if(Ctrl == LED_ON)
+    {
+        GPIO_SetBits(GPIOF, RELAY_CTRL_IO);
+    }
+    else
+    {
+        GPIO_ResetBits(GPIOF, RELAY_CTRL_IO);
+    }
+}
 static void EventProcess(uint8_t Channel, uint8_t Event)
 {
     uint16_t ChannelType;
-    ChannelType = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel]&0xF000);
+    ChannelType = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Channel] & 0xF000);
     switch(Event)
     {
         case CHANNEL_NORMAL:
             if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_OPEN) == CHANNEL_OPEN)
             {
                 ParameterSysStatus.ChannelState[Channel] &= ~(CHANNEL_OPEN);
-                if(ChannelType == CHANNEL_TYPE_LEAKAGE)
-                {
-                    ParameterSysStatus.ChannelEvent[Channel] = 139;
-                }
-                else if(ChannelType == CHANNEL_TYPE_TEMP)
-                {
-                    ParameterSysStatus.ChannelEvent[Channel] = 135;
-                }
-                else if(ChannelType == CHANNEL_TYPE_CURRENT)
-                {
-                    ParameterSysStatus.ChannelEvent[Channel] = 139;
-                }
+//                if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+//                {
+//                    ParameterSysStatus.ChannelEvent[Channel] = 139;
+//                }
+//                else if(ChannelType == CHANNEL_TYPE_TEMP)
+//                {
+//                    ParameterSysStatus.ChannelEvent[Channel] = 135;
+//                }
+//                else if(ChannelType == CHANNEL_TYPE_CURRENT)
+//                {
+//                    ParameterSysStatus.ChannelEvent[Channel] = 139;
+//                }
+                ParameterSysStatus.ChannelEvent[Channel] = 1;
                 ParameterSysStatus.FaultCount --;
             }
             else if((ParameterSysStatus.ChannelState[Channel] & CHANNEL_SHORT) == CHANNEL_SHORT)
             {
                 ParameterSysStatus.ChannelState[Channel] &= ~(CHANNEL_SHORT);
-                if(ChannelType == CHANNEL_TYPE_LEAKAGE)
-                {
-                    ParameterSysStatus.ChannelEvent[Channel] = 137;
-                }
-                else if(ChannelType == CHANNEL_TYPE_TEMP)
-                {
-                    ParameterSysStatus.ChannelEvent[Channel] = 133;
-                }
-                else if(ChannelType == CHANNEL_TYPE_CURRENT)
-                {
-                    ParameterSysStatus.ChannelEvent[Channel] = 137;
-                }
+//                if(ChannelType == CHANNEL_TYPE_LEAKAGE)
+//                {
+//                    ParameterSysStatus.ChannelEvent[Channel] = 137;
+//                }
+//                else if(ChannelType == CHANNEL_TYPE_TEMP)
+//                {
+//                    ParameterSysStatus.ChannelEvent[Channel] = 133;
+//                }
+//                else if(ChannelType == CHANNEL_TYPE_CURRENT)
+//                {
+//                    ParameterSysStatus.ChannelEvent[Channel] = 137;
+//                }
+                ParameterSysStatus.ChannelEvent[Channel] = 1;
                 ParameterSysStatus.FaultCount --;
             }
             if(ParameterSysStatus.FaultCount == 0)
@@ -616,7 +772,16 @@ static void EventProcess(uint8_t Channel, uint8_t Event)
                 {
                     ParameterSysStatus.ChannelEvent[Channel] = 145;
                 }
+                else if(ChannelType == CHANNEL_TYPE_IN)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 165;//反馈
+                }
+                else if(ChannelType == CHANNEL_TYPE_OUT)
+                {
+                    ParameterSysStatus.ChannelEvent[Channel] = 3;//启动
+                }
                 ParameterSysStatus.AlarmCount++;
+
                 LedCtrl(LED_ALARM, LED_ON);
                 MUSIC_Set(MUSIC_FIRE);
             }
@@ -634,15 +799,15 @@ static void EventProcess(uint8_t Channel, uint8_t Event)
                 {
                     if(ChannelType == CHANNEL_TYPE_LEAKAGE)
                     {
-                        ParameterSysStatus.ChannelEvent[Channel] = (137 << 8);
+                        ParameterSysStatus.ChannelEvent[Channel] = (1 << 8);
                     }
                     else if(ChannelType == CHANNEL_TYPE_TEMP)
                     {
-                        ParameterSysStatus.ChannelEvent[Channel] = (133 << 8);
+                        ParameterSysStatus.ChannelEvent[Channel] = (1 << 8);
                     }
                     else if(ChannelType == CHANNEL_TYPE_CURRENT)
                     {
-                        ParameterSysStatus.ChannelEvent[Channel] = (137 << 8);
+                        ParameterSysStatus.ChannelEvent[Channel] = (1 << 8);
                     }
                     ParameterSysStatus.FaultCount--;
                 }
@@ -672,15 +837,15 @@ static void EventProcess(uint8_t Channel, uint8_t Event)
                 {
                     if(ChannelType == CHANNEL_TYPE_LEAKAGE)
                     {
-                        ParameterSysStatus.ChannelEvent[Channel] = (139 << 8);
+                        ParameterSysStatus.ChannelEvent[Channel] = (1 << 8);
                     }
                     else if(ChannelType == CHANNEL_TYPE_TEMP)
                     {
-                        ParameterSysStatus.ChannelEvent[Channel] = (135 << 8);
+                        ParameterSysStatus.ChannelEvent[Channel] = (1 << 8);
                     }
                     else if(ChannelType == CHANNEL_TYPE_CURRENT)
                     {
-                        ParameterSysStatus.ChannelEvent[Channel] = (139 << 8);
+                        ParameterSysStatus.ChannelEvent[Channel] = (1 << 8);
                     }
                     ParameterSysStatus.FaultCount--;
                 }
@@ -713,6 +878,7 @@ INTERRUPT_HANDLER(TIM3_UPD_OVF_TRG_BRK_USART3_TX_IRQHandler, 21)
     TIM3_ClearFlag(TIM3_FLAG_Update);
     AdcState.ConvertCount++;
     ADC_TimerStop();
+
     ADC_SoftwareStartConv(ADC1);
 }
 INTERRUPT_HANDLER(DMA1_CHANNEL0_1_IRQHandler, 2)
@@ -769,8 +935,6 @@ static void ADC_TimerStart(void)
     while(TIM3_GetITStatus(TIM3_IT_Update) == RESET );// 清除计数器第一次无效中断
     TIM3_ClearFlag(TIM3_FLAG_Update);
     rim();
-
-
 }
 static void ADC_TimerStop(void)
 {

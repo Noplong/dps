@@ -47,6 +47,7 @@ static void GprsUsartTask(uint32_t param);
 static void SendHeartBeat(void);
 static void ConnectFailProcess(void);
 static void Gprs_ReStart(void);
+static void ReceiveReset(void);
 
 void PrintString(uint8_t *pStr, uint8_t len);
 void AnswerServer(uint8_t BufNum);
@@ -89,10 +90,10 @@ void Gprs_Init(void)
 
 //    //打开模块供电
     GPIO_ResetBits(GPON_OFF_GPIO, GPON_OFF_PIN);
-    GPIO_SetBits(GON_OFF_GPIO, GON_OFF_PIN);
-    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
-    GPIO_ResetBits(GON_OFF_GPIO, GON_OFF_PIN);
-    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+//    GPIO_SetBits(GON_OFF_GPIO, GON_OFF_PIN);
+//    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+//    GPIO_ResetBits(GON_OFF_GPIO, GON_OFF_PIN);
+//    atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
 
     status = atomThreadCreate(&GprsUsartTask_Tcb,
                               GPRS_USART_TASK_PRIO, GprsUsartTask, 0,
@@ -104,7 +105,8 @@ void Gprs_Init(void)
         printf ("GPRSTask start fail\n");
 #endif
     }
-    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
+    ReceiveReset();
+
     USART_Cmd(USART3, ENABLE);
 
 //    ConnectToServer();
@@ -130,9 +132,10 @@ static uint8_t* SendATCommand(uint8_t *cmd, uint8_t *ack, uint8_t Timeout)
     //atomSemResetCount(&Sem_Gprs,0);
     PrintString(cmd, 0);
     atomSemGet(&Sem_Gprs, SYSTEM_TICKS_PER_SEC * Timeout);
-    USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
+//    USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
 
     GprsRxBuf[0].DataBufferChar[RecvCount] = '\0';//添加结束符
+    RecvCount = 0;
     pString = strstr(&GprsRxBuf[0].DataBufferChar[0], ack);
     return pString;
 }
@@ -175,8 +178,9 @@ static void GprsUsartTask(uint32_t param)
                     {
 //                        pMatchString = SendATCommand("AT+CIPSTATUS\r\n", "+CPIN: READY", 2);
 //                        if(pMatchString)
-                        pMatchString = SendATCommand("AT+CPIN?\r\n", "+CPIN: READY", 2);
-                        if(pMatchString != NULL)
+                        SendATCommand("ATE0\r\n", "OK", 2);
+                        pMatchString = SendATCommand("AT+CPIN?\r\n", "ERROR", 2);
+                        if(pMatchString == NULL)
                         {
                             GprsInfo.Status.Status_bit.AT_CPIN_Flag = TRUE;
                             pMatchString = SendATCommand("AT+CSQ\r\n", "+CSQ:", 2);
@@ -215,6 +219,7 @@ static void GprsUsartTask(uint32_t param)
                     }
                     break;
                 case GPRS_COMMAND_CGATT://GPRS附着状态
+//                pMatchString = SendATCommand("AT+CGATT=1\r\n", "+CGATT: 1", 2);
                     pMatchString = SendATCommand("AT+CGATT?\r\n", "+CGATT:", 2);
                     if(pMatchString != NULL)
                     {
@@ -248,6 +253,7 @@ static void GprsUsartTask(uint32_t param)
                 case GPRS_COMMAND_CONNECT_IP://使用IP建立连接
                     pMatchString = SendATCommand("AT+CIPMUX=0\r\n", "OK", 2);
                     pMatchString = SendATCommand("AT+CIPMODE=1\r\n", "OK", 2);
+                    pMatchString = SendATCommand("AT+CIPCCFG=3,2,256,1\r\n", "OK", 2);
                     pMatchString = SendATCommand("AT+CSTT=CMNET\r\n", "OK", 5);
 
                     pMatchString = SendATCommand("AT+CIICR\r\n", "OK", 8); //激活场景
@@ -295,7 +301,8 @@ static void GprsUsartTask(uint32_t param)
                     }
                     else if(GprsRxBuf[status].DataBuff.DataPackage_Command == 0x03)//服务器确认命令
                     {
-
+                      memset(&(GprsRxBuf[status].DataBufferChar[0]), 0, BUF_SIZE);
+                        GprsRxBuf[status].DataBuff.DataPackage_State = DATA_PACKAGE_EMPTY;
                     }
                     else
                     {
@@ -314,12 +321,41 @@ static void GprsUsartTask(uint32_t param)
                     pMatchString = SendATCommand("AT+CCID\r\n", "OK", 2); //CCID
                     if(pMatchString != NULL)
                     {
-                        for(status = 0; status < 10; status++)
+                        for(status = 0; status < 20; status++)
                         {
-                            GprsInfo.Sim_Iccid[status] = (((GprsRxBuf[0].DataBufferChar[2 + 2 * status] - 0x30) << 4) | (GprsRxBuf[0].DataBufferChar[3 + 2 * status] - 0x30));
+                            GprsInfo.Sim_Iccid[status] = GprsRxBuf[0].DataBufferChar[2 + status];
+                        }
+                        GprsInfo.Sim_Iccid[19] = '*';
+                    }
+                    break;
+                case GPRS_COMMAND_UPDADTE://更新数据
+                    if(GPIO_ReadInputDataBit(GPRS_DCD_PORT, GPRS_DCD_PIN) != GPRS_DCD_PIN)//数据透传模式
+                    {
+//                        GPIO_Init(GPRS_DTR_PORT, GPRS_DTR_PIN, GPIO_Mode_Out_PP_High_Fast);
+//                        GPIO_SetBits(GPRS_DTR_PORT, RELAY_CTRL_IO);
+                        pMatchString = SendATCommand("+++", "OK", 15);
+                        if(pMatchString != NULL)
+                        {
+                            pMatchString = SendATCommand("AT+CSQ\r\n", "+CSQ:", 2);
+                            if(pMatchString != NULL)
+                            {
+                                status = ((*(pMatchString + 6) - 0x30) * 10) + (*(pMatchString + 7) - 0x30);
+
+                                if(status == 99)//无信号
+                                {
+                                    GprsInfo.AT_CSQ_Data = 0;
+                                }
+                                else
+                                {
+                                    GprsInfo.AT_CSQ_Data = 113 - (status * 2); //实际dbm
+                                }
+                            }
+                            pMatchString = SendATCommand("ATO\r\n", "CONNECT", 5);
+                            AT_Answer = 0;
                         }
                     }
                     break;
+
             }
         }
         else
@@ -357,91 +393,189 @@ static void GprsUsartTask(uint32_t param)
 void AnswerServer(uint8_t BufNum)
 {
     uint8_t i;
+    uint8_t TeV, Ch;
+    uint16_t Thv;
     GprsTxBuf.DataBuff.DataPackage_Start = 0x7E;
     GprsTxBuf.DataBuff.DataPackage_MsgID_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgID_L;
     GprsTxBuf.DataBuff.DataPackage_MsgID_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgID_H;
     GprsTxBuf.DataBuff.DataPackage_Version_L = GprsRxBuf[BufNum].DataBuff.DataPackage_Version_L;
     GprsTxBuf.DataBuff.DataPackage_Version_H = GprsRxBuf[BufNum].DataBuff.DataPackage_Version_H;
 
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Low_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_Low_L;
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Low_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_Low_H;
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Mid_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_Mid_L;
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Mid_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_Mid_H;
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_High_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_High_L;
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_High_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgTo_High_H;
-    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_Low_L;
-    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_Low_H;
-    GprsTxBuf.DataBuff.DataPackage_MsgTo_Mid_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_Mid_L;
-    GprsTxBuf.DataBuff.DataPackage_MsgTo_Mid_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_Mid_H;
-    GprsTxBuf.DataBuff.DataPackage_MsgTo_High_L = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_High_L;
-    GprsTxBuf.DataBuff.DataPackage_MsgTo_High_H = GprsRxBuf[BufNum].DataBuff.DataPackage_MsgFrom_High_H;
+    memcpy(GprsTxBuf.DataBuff.DataPackage_MsgFrom, GprsInfo.Sim_Iccid, 20);
+
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_L = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_H = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Mid_L = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Mid_H = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_High_L = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_High_H = 0x00;
 
     GprsTxBuf.DataBuff.DataPackage_Command = 0x03;//命令字节-确认
     GprsTxBuf.DataBuff.DataPackage_Data[0] = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[0];//类型标志
 
     if(GPIO_ReadInputDataBit(GPRS_DCD_PORT, GPRS_DCD_PIN) == GPRS_DCD_PIN)
     {
+        GprsRxBuf[BufNum].DataBuff.DataPackage_State = DATA_PACKAGE_EMPTY;
         memset(&(GprsTxBuf.DataBufferChar[0]), 0, BUF_SIZE);
         ConnectFailProcess();
         return;
     }
 
+    GprsTxBuf.DataBuff.DataPackage_DataLength_L = (2+12);//数据长度
+    GprsTxBuf.DataBuff.DataPackage_DataLength_H = 0x00;//数据长度
+    
+    //信息体数目
+    GprsTxBuf.DataBuff.DataPackage_Data[1] = 1;
+    GprsTxBuf.DataBuff.DataPackage_Data[2] = SYSTEM_TYPE;//系统类型
+    GprsTxBuf.DataBuff.DataPackage_Data[3] = DEVICE_TYPE_11_CHANNEL;//设备类型
+    GprsTxBuf.DataBuff.DataPackage_Data[4] = 1;//设备地址-控制器号
+    GprsTxBuf.DataBuff.DataPackage_Data[5] = 1;//设备地址-回路号
+    GprsTxBuf.DataBuff.DataPackage_Data[6] = 1;//设备地址-地址号
+    GprsTxBuf.DataBuff.DataPackage_Data[7] = 0; //设备地址-通道号
+    
+    GprsTxBuf.DataBuff.DataPackage_Data[8] = 0x00; //心跳间隔
+    
+    GprsTxBuf.DataBuff.DataPackage_Data[9] = 0x00;//音响模式
+    GprsTxBuf.DataBuff.DataPackage_Data[10] = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_Data[11] = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_Data[12] = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_Data[13] = 0x00;
 
     switch(GprsRxBuf[BufNum].DataBuff.DataPackage_Data[0])
     {
-        case SERVER_COMMAND_SIM_ICCID:
-            GprsTxBuf.DataBuff.DataPackage_DataLength_L = 22;//数据长度
-            GprsTxBuf.DataBuff.DataPackage_DataLength_H = 0x00;//数据长度
-
-            //信息体数目
-            GprsTxBuf.DataBuff.DataPackage_Data[1] = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[1];
-            for(i = 0; i < 20; i++)
-            {
-                if(i < 10)
-                {
-                    GprsTxBuf.DataBuff.DataPackage_Data[2 + i] = GprsInfo.Sim_Iccid[i];
-                }
-                else
-                {
-                    GprsTxBuf.DataBuff.DataPackage_Data[2 + i] = 0x00;
-                }
-            }
-            i = PacketPreprocess(&GprsTxBuf.DataBufferChar[1], 41, 0);//[0]为起始符
-            PrintString(GprsTxBuf.DataBufferChar, i + 1);
-            USART_SendData8(USART3, 0x7E);
-            break;
         case SERVER_COMMAND_DEVICE_CONFIG:
+            //设备类型正确
+            if(GprsRxBuf[BufNum].DataBuff.DataPackage_Data[3] == DEVICE_TYPE_11_CHANNEL)
+            {
+                //需配置通道数
+                for(i = 0; i < GprsRxBuf[BufNum].DataBuff.DataPackage_Data[1]; i++)
+                {
+                    Ch = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 5];
+                    if(Ch == 0)//系统配置
+                    {
+                        TeV = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 6];
+                        if(TeV >= 30 && TeV <= 240)
+                        {
+                            ParameterBuffer.ParameterConfig.HeartBeatTime = TeV;
+                        }
+                        TeV = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 7];
+                        if(TeV == 0)
+                        {
+                            ParameterBuffer.ParameterConfig.Music = MUSIC_MUTE;
+                        }
+                        else
+                        {
+                            ParameterBuffer.ParameterConfig.Music = MUSIC_NORMAL;
+                        }
+                    }
+                    else if(Ch == 1) //剩余电流1
+                    {
+                        TeV = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 7]; //参量类型
+                        Thv = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 10]; //阈值
+                        Thv |= (GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 11] << 8);
+                        if((TeV == 15) && ((Thv == 0) || (Thv >= 200 && Thv <= 999)))
+                        {
+                            ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch - 1] = CHANNEL_TYPE_LEAKAGE;
+                            ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch - 1] |= Thv;
+                        }
+                    }
+                    else if(Ch > 1 && Ch < 6)//温度通道2-5
+                    {
+                        TeV = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 7]; //参量类型
+                        Thv = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 10]; //阈值
+                        Thv |= (GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 11] << 8);
+                        Thv = Thv/10;//缩小10倍
+                        if((TeV == 2) && ((Thv == 0) || (Thv >= 45 && Thv <= 140)))
+                        {
+                            ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch - 1] = CHANNEL_TYPE_TEMP;
+                            ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch - 1] |= Thv;
+                        }
 
+                    }
+                    else if(Ch >= 6 && Ch < 9)//电流通道6-8
+                    {
+                        TeV = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 7]; //参量类型
+                        Thv = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 10]; //阈值
+                        Thv |= (GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 11] << 8);
+                        Thv = Thv/10;//缩小10倍
+                        if((TeV == 11) && ((Thv == 0) || (Thv >= 10 && Thv <= 100)))
+                        {
+                            ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch - 1] = CHANNEL_TYPE_CURRENT;
+                            ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch - 1] |= Thv;
+                        }
+                    }
+                    else if(Ch >= 9 && Ch < 11)//输入通道9 10
+                    {
+                        TeV = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 7]; //参量类型
+                        Thv = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 10]; //阈值
+                        Thv |= (GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 11] << 8);
+                        Thv = Thv/10;//缩小10倍
+                        if((TeV == 128) && ((Thv == 0) || (Thv == 1) || (Thv == 2)))
+                        {
+                            ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch - 1] = CHANNEL_TYPE_IN;
+                            ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch - 1] |= Thv;
+                        }
+                    }
+                    else if(Ch == 11)//输出通道11
+                    {
+                        TeV = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 7]; //参量类型
+                        Thv = GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 10]; //阈值
+                        Thv |= (GprsRxBuf[BufNum].DataBuff.DataPackage_Data[2 + (12 * i) + 11] << 8);
+                        Thv = Thv/10;//缩小10倍
+                        if((TeV == 129) && ((Thv == 0) || (Thv == 1) || (Thv == 2)))
+                        {
+                            ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch - 1] = CHANNEL_TYPE_OUT;
+                            ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch - 1] |= Thv;
+                        }
+                    }
+
+
+                }
+                WriteFlashParameter();
+                i = PacketPreprocess(&GprsTxBuf.DataBufferChar[1], 47, 0);//[0]为起始符
+                PrintString(GprsTxBuf.DataBufferChar, i + 1);
+                USART_SendData8(USART3, 0x7E);
+       
+            }
             break;
         case SERVER_COMMAND_DEVICE_RESET:
+            i = PacketPreprocess(&GprsTxBuf.DataBufferChar[1], 47, 0);//[0]为起始符
+            PrintString(GprsTxBuf.DataBufferChar, i + 1);
+            USART_SendData8(USART3, 0x7E);
+            atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
+            WWDG_SWReset();
+            break;
         case SERVER_COMMAND_DEVICE_MUTE:
-            GprsTxBuf.DataBuff.DataPackage_DataLength_L = 2;//数据长度
-            GprsTxBuf.DataBuff.DataPackage_DataLength_H = 0x00;//数据长度
-
-            //信息体数目
-            GprsTxBuf.DataBuff.DataPackage_Data[1] = 0;//类型标志
-            i = PacketPreprocess(&GprsTxBuf.DataBufferChar[1], 21, 0);//[0]为起始符
+            MUSIC_Set(MUSIC_NONE);
+            i = PacketPreprocess(&GprsTxBuf.DataBufferChar[1], 47, 0);//[0]为起始符
             PrintString(GprsTxBuf.DataBufferChar, i + 1);
             USART_SendData8(USART3, 0x7E);
             break;
         default:
             break;
     }
+    GprsRxBuf[BufNum].DataBuff.DataPackage_State = DATA_PACKAGE_EMPTY;
     memset(&(GprsTxBuf.DataBufferChar[0]), 0, BUF_SIZE);
-
-
 }
 void HeartBeat_Timer(void)
 {
     GprsInfo.HeartBeat ++;
-    if(GprsInfo.HeartBeat >= 200)//秒
+//    if(GprsInfo.HeartBeat >= 30)//26时是10秒
+    if(GprsInfo.HeartBeat >= (26 * ParameterBuffer.ParameterConfig.HeartBeatTime / 10)) //26时是10秒
     {
         GprsInfo.HeartBeat = 0;
         QueueGprsPut(GPRS_COMMAND_HEARTBEAT);
     }
+//    else if(GprsInfo.HeartBeat == 26)
+//    {
+//        QueueGprsPut(GPRS_COMMAND_UPDADTE);
+//    }
 }
 static void Gprs_ReStart(void)
 {
+//    MUSIC_Off();
+    GPIO_ResetBits(GPIOE, GPIO_Pin_7);
+
     GPIO_SetBits(GPON_OFF_GPIO, GPON_OFF_PIN);
     atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
     atomTimerDelay(SYSTEM_TICKS_PER_SEC * 20);
@@ -494,7 +628,7 @@ static void SendHeartBeat(void)
     {
         ConnectFailProcess();
     }
-
+    ParameterBuffer.ParameterConfig.HeartBeatTime = 10;
 
     memset(&(GprsTxBuf.DataBufferChar[0]), 0, BUF_SIZE);
     GprsTxBuf.DataBuff.DataPackage_Start = 0x7E;
@@ -504,14 +638,10 @@ static void SendHeartBeat(void)
     GprsTxBuf.DataBuff.DataPackage_Version_L = 0x02;
     GprsTxBuf.DataBuff.DataPackage_Version_H = CURRENT_VERSION;
 
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Low_L =  ParameterBuffer.ParameterConfig.PackageHead_From;
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Low_H =  (ParameterBuffer.ParameterConfig.PackageHead_From >> 8);
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Mid_L = 0x00;
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_Mid_H = 0x00;
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_High_L = 0x00;
-    GprsTxBuf.DataBuff.DataPackage_MsgFrom_High_H = 0x00;
-    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_L = ParameterBuffer.ParameterConfig.PackageHead_To;
-    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_H = (ParameterBuffer.ParameterConfig.PackageHead_To >> 8);
+    memcpy(GprsTxBuf.DataBuff.DataPackage_MsgFrom, GprsInfo.Sim_Iccid, 20);
+
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_L = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_MsgTo_Low_H = 0x00;
     GprsTxBuf.DataBuff.DataPackage_MsgTo_Mid_L = 0x00;
     GprsTxBuf.DataBuff.DataPackage_MsgTo_Mid_H = 0x00;
     GprsTxBuf.DataBuff.DataPackage_MsgTo_High_L = 0x00;
@@ -520,87 +650,155 @@ static void SendHeartBeat(void)
     GprsTxBuf.DataBuff.DataPackage_Command = 0x02;//命令字节-发送
     GprsTxBuf.DataBuff.DataPackage_Data[0] = 65;//类型标志-上传设备状态
     j = 2;
-    for(Ch = 0; Ch < CHANNEL_NUM; Ch++)
+    //通道号为0-上传系统配置信息
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = SYSTEM_TYPE;//系统类型
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = DEVICE_TYPE_11_CHANNEL;//设备类型
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-控制器号
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-回路号
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-地址号
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 0; //设备地址-通道号
+
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterBuffer.ParameterConfig.HeartBeatTime; //心跳间隔
+
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterBuffer.ParameterConfig.Music;//音响模式
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 0x00;
+    GprsTxBuf.DataBuff.DataPackage_Data[j++] = 0x00;
+
+    for(Ch = 0; Ch < CHANNEL_NUM; Ch++)//CHANNEL_NUM更改
     {
         ChannelType = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] & 0xF000);
         AlarmValue  = (ParameterBuffer.ParameterConfig.ChannelAlarmValue[Ch] & 0x0FFF);
-        if(AlarmValue != 0)//通道在线
+//        if(AlarmValue != 0)//通道在线---->所以通道都有上传
         {
-//            //测试
-//            ParameterSysStatus.ChannelEvent[Ch] = 500;
-//            AlarmValue = 200;           
             UsedChannel ++;
             if((ParameterSysStatus.ChannelEvent[Ch] & 0xFF00) != 0)//开路转短路或短路转开路-需先报恢复
             {
                 UsedChannel++;
                 GprsTxBuf.DataBuff.DataPackage_Data[j++] = SYSTEM_TYPE;//系统类型
-                GprsTxBuf.DataBuff.DataPackage_Data[j++] = DEVICE_TYPE_12_CHANNEL;//设备类型
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = DEVICE_TYPE_11_CHANNEL;//设备类型
                 GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-控制器号
                 GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-回路号
                 GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-地址号
                 GprsTxBuf.DataBuff.DataPackage_Data[j++] = Ch + 1; //设备地址-通道号
                 GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelEvent[Ch] >> 8); //设备状态
+
                 if(ChannelType == CHANNEL_TYPE_LEAKAGE)
                 {
                     GprsTxBuf.DataBuff.DataPackage_Data[j++] = 15;//设备参量-参量类型
                     //实时数据
                     GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
                     GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
+
+                    //报警阈值
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = AlarmValue;
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue >> 8);
                 }
                 else if(ChannelType == CHANNEL_TYPE_TEMP)
                 {
                     GprsTxBuf.DataBuff.DataPackage_Data[j++] = 2;//设备参量-参量类型
                     //实时数据
-                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch]*10);
-                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ((ParameterSysStatus.ChannelValue[Ch]*10) >> 8);
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
+                    //报警阈值
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue * 10);
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ((AlarmValue * 10) >> 8);
+
                 }
                 else if(ChannelType == CHANNEL_TYPE_CURRENT)
                 {
                     GprsTxBuf.DataBuff.DataPackage_Data[j++] = 11;//设备参量-参量类型
                     //实时数据
-                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch]*10);
-                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ((ParameterSysStatus.ChannelValue[Ch]*10) >> 8);
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
+                    //报警阈值
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue * 10);
+                    GprsTxBuf.DataBuff.DataPackage_Data[j++] = ((AlarmValue * 10) >> 8);
+
                 }
-                //报警阈值
-                GprsTxBuf.DataBuff.DataPackage_Data[j++] = AlarmValue;
-                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue >> 8);
+
+
             }
             GprsTxBuf.DataBuff.DataPackage_Data[j++] = SYSTEM_TYPE;//系统类型
-            GprsTxBuf.DataBuff.DataPackage_Data[j++] = DEVICE_TYPE_12_CHANNEL;//设备类型
+            GprsTxBuf.DataBuff.DataPackage_Data[j++] = DEVICE_TYPE_11_CHANNEL;//设备类型
             GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-控制器号
             GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-回路号
             GprsTxBuf.DataBuff.DataPackage_Data[j++] = 1;//设备地址-地址号
             GprsTxBuf.DataBuff.DataPackage_Data[j++] = Ch + 1; //设备地址-通道号
             GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelEvent[Ch]; //设备状态
+
+
             if(ChannelType == CHANNEL_TYPE_LEAKAGE)
             {
                 GprsTxBuf.DataBuff.DataPackage_Data[j++] = 15;//设备参量-参量类型
+                //实时数据
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
+                //报警阈值
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = AlarmValue;
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue >> 8);
             }
             else if(ChannelType == CHANNEL_TYPE_TEMP)
             {
                 GprsTxBuf.DataBuff.DataPackage_Data[j++] = 2;//设备参量-参量类型
+                //实时数据
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
+
+                //报警阈值
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue * 10);
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = ((AlarmValue * 10) >> 8);
+
             }
             else if(ChannelType == CHANNEL_TYPE_CURRENT)
             {
                 GprsTxBuf.DataBuff.DataPackage_Data[j++] = 11;//设备参量-参量类型
-            }
-            //实时数据
-            GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
-            GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
+                //实时数据
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = ParameterSysStatus.ChannelValue[Ch];
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (ParameterSysStatus.ChannelValue[Ch] >> 8);
 
-            //报警阈值
-            GprsTxBuf.DataBuff.DataPackage_Data[j++] = AlarmValue;
-            GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue >> 8);
+                //报警阈值
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue * 10);
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = ((AlarmValue * 10) >> 8);
+
+            }
+            else if(ChannelType == CHANNEL_TYPE_IN)
+            {
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 128;//设备参量-输入通道
+                //实时数据
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 0x00;
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 0x00;
+
+                //报警阈值->检测方式(常开检测、常闭检测)
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = AlarmValue;
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue >> 8);
+
+            }
+            else if(ChannelType == CHANNEL_TYPE_OUT)
+            {
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 129;//设备参量-输出通道
+                //实时数据
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 0x00;
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = 0x00;
+
+                //报警阈值->输出方式(报警检测、故障输出)
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = AlarmValue;
+                GprsTxBuf.DataBuff.DataPackage_Data[j++] = (AlarmValue >> 8);
+
+            }
+
+
         }
 
 
     }
-    GprsTxBuf.DataBuff.DataPackage_Data[1] = UsedChannel;//信息对象数目
+    GprsTxBuf.DataBuff.DataPackage_Data[1] = (UsedChannel + 1); //信息对象数目
 
-    GprsTxBuf.DataBuff.DataPackage_DataLength_L = (UsedChannel * 12 + 2); //应用单元数据长度
-    GprsTxBuf.DataBuff.DataPackage_DataLength_H = ((UsedChannel * 12 + 2) >> 8); //应用单元数据长度
+    GprsTxBuf.DataBuff.DataPackage_DataLength_L = ((UsedChannel + 1) * 12 + 2); //应用单元数据长度
+    GprsTxBuf.DataBuff.DataPackage_DataLength_H = (((UsedChannel + 1) * 12 + 2) >> 8); //应用单元数据长度
 
-    j = PacketPreprocess(&GprsTxBuf.DataBufferChar[1], (UsedChannel * 12 + 2 + 19), 0); //[0]为起始符
+    j = PacketPreprocess(&GprsTxBuf.DataBufferChar[1], ((UsedChannel + 1) * 12 + 2 + 33), 0); //[0]为起始符
     PrintString(GprsTxBuf.DataBufferChar, j + 1);
     USART_SendData8(USART3, 0x7E);
 }
@@ -661,16 +859,12 @@ INTERRUPT_HANDLER(TIM3_CC_USART3_RX_IRQHandler, 22)
         USART_ClearITPendingBit(USART3, USART_IT_RXNE);
 
         RecvData = USART_ReceiveData8(USART3);
-
-
         if(AT_Answer != 1)//透传模式下
         {
-            if(RecvData == 0x7E && RecvCount == 0)//接收到起始符
+            if(RecvData == 0x7E && (RecvCount < 2))//接收到起始符
             {
-                if(RecvData == 0x7E && RecvCount == 1)
-                {
-                    RecvCount = 0;
-                }
+                RecvCount = 0;
+//                LedCtrl(LED_ALARM, LED_ON);
                 if(GprsRxBuf[0].DataBuff.DataPackage_State == DATA_PACKAGE_EMPTY)
                 {
                     RxBufChoose = 0;
@@ -697,6 +891,7 @@ INTERRUPT_HANDLER(TIM3_CC_USART3_RX_IRQHandler, 22)
 
                 if(RecvData == 0x7E)//结束符
                 {
+//                    LedCtrl(LED_ALARM, LED_OFF);
                     GprsRxBuf[RxBufChoose].DataBuff.DataPackage_Stop = 0x7E;
                     GprsRxBuf[RxBufChoose].DataBuff.DataPackage_State = DATA_PACKAGE_READY;
                     RecvCount = 0;

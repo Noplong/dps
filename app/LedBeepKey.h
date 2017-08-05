@@ -23,7 +23,7 @@
 #define LED_COMM    GPIO_Pin_5
 #define LED_FAULT   GPIO_Pin_6
 
-#define BACK_LIGHT   GPIO_Pin_7
+#define BACK_LIGHT   GPIO_Pin_6
 
 #define LED_ON   0x00
 #define LED_OFF   0x01
@@ -32,9 +32,9 @@
 #define KEY_PRESS       0  //按键未按下
 #define KEY_UNPRESS   1     //按键按下
  
-#define KEY_1 0x31
-#define KEY_2 0x32
-#define KEY_3 0x33
+#define KEY_MENU 0x31
+#define KEY_ENTER 0x32
+#define KEY_RETURN 0x33
 
 
 

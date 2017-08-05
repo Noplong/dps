@@ -18,8 +18,12 @@
 #define GPRS_PUBLIC extern
 #endif
 
-#define GPRS_DCD_PORT       GPIOD
-#define GPRS_DCD_PIN        GPIO_Pin_4
+#define GPRS_DCD_PORT       GPIOC
+#define GPRS_DCD_PIN        GPIO_Pin_7
+
+#define GPRS_DTR_PORT       GPIOC
+#define GPRS_DTR_PIN        GPIO_Pin_6
+
 
 //应用数据单元-类型标志定义
 #define SERVER_COMMAND_DEVICE_STATUS    65 //上传设备状态
@@ -32,7 +36,7 @@
 #define SYSTEM_TYPE    10 //电气火灾监控系统
 
 //应用数据单元-设备类型代码
-#define DEVICE_TYPE_12_CHANNEL    8 //DDH5267物联网模块
+#define DEVICE_TYPE_11_CHANNEL    8 //DDH5267物联网模块
 
 
 #define GPRS_COMMAND_PREPARE         01 //网络连接准备
@@ -43,6 +47,8 @@
 #define GPRS_COMMAND_RECVPROCESS        06//接收包处理
 #define GPRS_COMMAND_RECV_TIMEOUT        07//接收包超时处理
 #define GPRS_COMMAND_CCID        8//读设备CCID
+#define GPRS_COMMAND_UPDADTE        9//更新数据
+
 
 
 #define GPRS_COMMAND_SPECIAL         20 //特殊字符处理
@@ -123,7 +129,7 @@ typedef struct tagGprsInfo
 {
     STATUS_BUFF Status;
     uint8_t AT_CSQ_Data;//信号强度
-    uint8_t Sim_Iccid[10];//设备ICCID  
+    uint8_t Sim_Iccid[20];//设备ICCID  
     uint16_t HeartBeat;//心跳计时
     uint16_t CommandCount;//业务流水号，高四位代表数据传输状态
 
@@ -144,12 +150,7 @@ typedef struct
     uint8_t DataPackage_Version_L;       //2字节协议版本号(低字节在前)
     uint8_t DataPackage_Version_H;
 
-    uint8_t DataPackage_MsgFrom_Low_L;   ////6字节源地址(低字节在前)
-    uint8_t DataPackage_MsgFrom_Low_H;
-    uint8_t DataPackage_MsgFrom_Mid_L;   //
-    uint8_t DataPackage_MsgFrom_Mid_H;   //    
-    uint8_t DataPackage_MsgFrom_High_L;  //
-    uint8_t DataPackage_MsgFrom_High_H;  //
+    uint8_t DataPackage_MsgFrom[20];   ////20字节源地址(低字节在前)
 
     uint8_t DataPackage_MsgTo_Low_L;     ////6字节目的地址(低字节在前)
     uint8_t DataPackage_MsgTo_Low_H;
@@ -163,7 +164,7 @@ typedef struct
     
     uint8_t  DataPackage_Command;       //1字节命令字节
 
-    uint8_t DataPackage_Data[233];      //233字节应用单元数据
+    uint8_t DataPackage_Data[219];      //233字节应用单元数据
 
     uint8_t DataPackage_CRCL;           //1字节CRC校验低字节
     uint8_t DataPackage_CRCH;           //1字节CRC校验高字节

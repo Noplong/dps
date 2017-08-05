@@ -1,5 +1,5 @@
 [DebugChecksum]
-Checksum=-729847494
+Checksum=-230792695
 [Stack]
 FillEnabled=0
 OverflowWarningsEnabled=1
@@ -14,15 +14,34 @@ ByteLimit=50
 ShowArgs=0
 [Disassembly]
 MixedMode=1
+[struct_types]
+Fmt0=DATA_FORMAT-DataPackage_Start	4	0
+[array_types]
+Fmt0=u16[11]	4	0
+Fmt1=u16[8]	4	0
+Fmt2=u8[219]	3	0
+Fmt3=u8[233]	4	0
+[watch_formats]
+Fmt0={W}1:status	3	0
 [DataSample]
 LogEnabled=0
 GraphEnabled=0
 ShowTimeLog=1
 ShowTimeSum=1
 [Breakpoints]
-Bp0=_ "STD_CODE" "{$PROJ_DIR$\app\Window.c}.282.25" 1 0 0 0 "" 0 ""
-Bp1=_ "STD_CODE" "{$PROJ_DIR$\app\Window.c}.281.25" 1 0 0 0 "" 0 ""
-Count=2
+Bp0=_ "STD_CODE" "{$PROJ_DIR$\app\Window.c}.37.13" 1 0 0 0 "" 0 ""
+Bp1=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.549.13" 1 0 0 0 "" 0 ""
+Bp2=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.549.13" 1 0 0 0 "" 0 ""
+Bp3=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.254.21" 1 0 0 0 "" 0 ""
+Bp4=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.227.25" 1 0 0 0 "" 0 ""
+Bp5=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.173.25" 1 0 0 0 "" 0 ""
+Bp6=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.159.21" 1 0 0 0 "" 0 ""
+Bp7=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.182.25" 1 0 0 0 "" 0 ""
+Bp8=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.223.21" 1 0 0 0 "" 0 ""
+Bp9=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.223.21" 1 0 0 0 "" 0 ""
+Bp10=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.321.21" 1 0 0 0 "" 0 ""
+Bp11=_ "STD_CODE" "{$PROJ_DIR$\app\GPRS.c}.895.21" 1 0 0 0 "" 0 ""
+Count=12
 [Log file]
 LoggingEnabled=_ 0
 LogFile=_ ""

@@ -18,6 +18,8 @@
     #define MIXCHANNEL_PUBLIC extern
 #endif
 
+#define RELAY_CTRL_IO        GPIO_Pin_4
+
 #define TEMP_CTRL_IO        GPIO_Pin_0
 #define CURRENT_CTRL_IO     GPIO_Pin_5
 #define CHECK_CURRENT_IO    GPIO_Pin_1
@@ -25,6 +27,9 @@
 #define CHANNEL_TYPE_LEAKAGE    0x1000
 #define CHANNEL_TYPE_TEMP       0x2000  
 #define CHANNEL_TYPE_CURRENT    0x3000
+#define CHANNEL_TYPE_IN         0x4000
+#define CHANNEL_TYPE_OUT        0x5000
+
 #define CHANNEL_ALARM_VALUE     0x0FFF
 
 
@@ -37,7 +42,7 @@
 #define ADC_CHANGE_DONE             0x01
 #define ADC_CHANGE_DOING            0x02
 
-#define CHECK_TIMES            0x01
+#define CHECK_TIMES            0x03
 
 
 typedef struct
@@ -51,5 +56,7 @@ typedef struct
 
 MIXCHANNEL_PUBLIC ADC_STATE AdcState;
 MIXCHANNEL_PUBLIC void AdcInit(void); 
+MIXCHANNEL_PUBLIC void RelayCtrl(uint8_t Ctrl);
+
 #endif
 
